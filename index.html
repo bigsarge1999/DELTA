@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Big Sarge Transportation - Shop Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        header { background: #333; color: white; padding: 15px; text-align: center; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #333; color: white; }
+        input, select, button { padding: 10px; margin: 5px 0; }
+        button { background: #0056b3; color: white; border: none; cursor: pointer; }
+        button:hover { background: #004494; }
+    </style>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+</head>
+<body>
+
+<header>
+    <h1>Big Sarge Transportation Shop Tracker</h1>
+</header>
+
+<div class="container">
+    
+    <!-- Work Order Management -->
+    <div class="section" id="work-orders">
+        <h2>Work Order Management</h2>
+        <input type="text" id="search-bar" placeholder="Search by Customer, WO#, VIN, or Plate...">
+        <select id="status-filter">
+            <option value="all">All Statuses</option>
+            <option value="checked-in">Checked In</option>
+            <option value="in-progress">In Progress</option>
+            <option value="on-hold">On Hold</option>
+            <option value="ready">Ready for Pickup</option>
+            <option value="invoiced">Invoiced</option>
+        </select>
+        <button onclick="fetchWorkOrders()">Refresh Orders</button>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>WO #</th>
+                    <th>Customer</th>
+                    <th>Unit/VIN</th>
+                    <th>Status</th>
+                    <th>Hydraulic Code</th>
+                    <th>Total Cost</th>
+                </tr>
+            </thead>
+            <tbody id="work-order-list">
+                <!-- Data populated by Firebase -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Time Card Management Module -->
+    <div class="section" id="time-cards">
+        <h2>Time Card Management (Admin)</h2>
+        <input type="text" id="mechanic-name" placeholder="Mechanic Name">
+        <input type="number" id="hours-logged" placeholder="Hours Logged">
+        <input type="date" id="shift-date">
+        <button onclick="logShift()">Log Shift</button>
+        <button onclick="modifyShift()">Modify Selected Shift</button>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Mechanic</th>
+                    <th>Date</th>
+                    <th>Hours</th>
+                </tr>
+            </thead>
+            <tbody id="shift-log-list">
+                <!-- Data populated by Firebase -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Admin & Configuration -->
+    <div class="section" id="admin-panel">
+        <h2>Admin Functions</h2>
+        <button onclick="exportData()">Export Data (JSON)</button>
+        <button onclick="purgeData()" style="background: red;">Purge Database</button>
+    </div>
+
+</div>
+
+<script>
+    // 1. Firebase Configuration
+    const firebaseConfig = {
+        projectId: "delta-63a97",
+        apiKey: "AlzaSyCzEjaRbGelXTvBgsoUzotUbUvfXsEvKW0",
+        authDomain: "delta-63a97.firebaseapp.com",
+        databaseURL: "https://delta-63a97-default-rtdb.firebaseio.com",
+        storageBucket: "delta-63a97.firebasestorage.app"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // 2. Hydraulic System Reference Codes
+    const CODES = {
+        "23AA-23AZ": "General Hydraulic System",
+        "23BA-23BZ": "Hydraulic Reservoir/Tank",
+        "23CA-23CZ": "Hydraulic Pump components",
+        "23DA-23DZ": "Hydraulic Valves",
+        "23EA-23MZ": "Dedicated Hydraulic Cylinder classes",
+        "23NA-23NZ": "Hydraulic Power Converters",
+        "23OA-23OZ": "Hydraulic Motors",
+        "23PA-23PZ": "Hydraulic Accumulators",
+        "23QA-23QZ": "Hydraulic Hose Reels"
+    };
+
+    // 3. Core Functions
+    function calculateJobCost(partsArr, flatLaborFee) {
+        let partsTotal = partsArr.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+        return partsTotal + flatLaborFee;
+    }
+
+    function fetchWorkOrders() {
+        console.log("Fetching work orders from Firebase...");
+        // db.ref('workOrders').once('value').then(snapshot => { ... });
+    }
+
+    function logShift() {
+        const name = document.getElementById('mechanic-name').value;
+        const hours = document.getElementById('hours-logged').value;
+        const date = document.getElementById('shift-date').value;
+        
+        if(name && hours && date) {
+            console.log(`Logging shift for ${name}: ${hours} hours on ${date}`);
+            // db.ref('timeCards').push({ name, hours, date });
+        } else {
+            alert("Please fill out all time card fields.");
+        }
+    }
+
+    function modifyShift() {
+        console.log("Admin modification of shift log triggered.");
+        // Logic to update existing timecard entries
+    }
+
+    function exportData() {
+        console.log("Exporting Firestore collection to JSON...");
+    }
+
+    function purgeData() {
+        if(confirm("WARNING: Are you sure you want to completely purge the collection?")) {
+            console.log("Purging database...");
+            // db.ref('/').remove();
+        }
+    }
+</script>
+
+</body>
+</html>
