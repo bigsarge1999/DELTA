@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shop Tracker — Work Orders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#efece4;          /* light text used on dark surfaces (header, active pills) */
+    --panel:#1b2126;         /* card / section background */
+    --panel-alt:#242c33;     /* nested surfaces: inputs, code-line, search box */
+    --bg:#101418;            /* page background */
+    --steel-dark:#0b0e11;    /* darkest accent: header gradient anchor, active-tab bg */
+    --steel:#c7cdd2;         /* primary readable text on dark panels */
+    --steel-light:#8b96a0;   /* secondary / dim text */
+    --orange:#e2622f; --orange-dark:#b84316;
+    --blue:#5c93c9; --green:#5fae5c; --amber:#dba43a; --red:#d0574a;
+    --line:#333c44;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg);
+    background-image:radial-gradient(circle at 1px 1px, rgba(255,255,255,0.035) 1px, transparent 0);
+    background-size:18px 18px;
+    color:var(--steel); font-family:'JetBrains Mono', monospace; min-height:100vh;
+  }
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 20px 60px;}
+
+  .plate{
+    background:linear-gradient(180deg,#343d44,#181d21); border-radius:6px; padding:18px 24px;
+    color:var(--ink); display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 3px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+    position:relative; border:1px solid #05070a; flex-wrap:wrap; gap:14px;
+  }
+  .plate::before, .plate::after{ content:''; position:absolute; width:8px; height:8px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #cfd4d8, #6a747c); top:8px; }
+  .plate::before{left:8px;} .plate::after{right:8px;}
+  .plate h1{ font-family:'Oswald',sans-serif; font-weight:700; font-size:24px; letter-spacing:1px; margin:0; text-transform:uppercase; }
+  .plate .sub{font-size:11px; color:var(--steel-light); letter-spacing:2px; text-transform:uppercase; margin-top:4px;}
+  .gauge-mini{display:flex; gap:16px; align-items:center;}
+  .gauge{
+    width:60px;height:60px;border-radius:50%; background:radial-gradient(circle at 35% 30%, #262d33, #030405);
+    border:3px solid #454f57; display:flex;align-items:center;justify-content:center;flex-direction:column;
+    box-shadow:inset 0 0 8px rgba(0,0,0,0.7);
+  }
+  .gauge .num{font-family:'Oswald',sans-serif;font-size:19px;font-weight:600;color:var(--orange);}
+  .gauge .lbl{font-size:7px;letter-spacing:1px;color:var(--steel-light);text-transform:uppercase;}
+
+  .mainnav{display:flex; gap:6px; margin:20px 0 4px; flex-wrap:wrap;}
+  .mainnav .navtab{
+    padding:9px 18px; border:1px solid var(--line); background:transparent; color:var(--steel-light);
+    border-radius:3px 3px 0 0; font-family:'Oswald',sans-serif; font-weight:600; font-size:13px;
+    letter-spacing:1px; text-transform:uppercase; cursor:pointer; border-bottom:none;
+  }
+  .mainnav .navtab.active{ background:var(--orange); color:#fff; border-color:var(--orange); }
+  .view{display:none;} .view.active{display:block;}
+
+  .toolbar{display:flex; justify-content:space-between; align-items:center; margin:18px 0 14px; flex-wrap:wrap; gap:10px;}
+  .tabs{display:flex; gap:6px; flex-wrap:wrap;}
+  .tab{
+    padding:7px 14px; border:1px solid var(--line); background:var(--panel); border-radius:3px;
+    font-size:11px; letter-spacing:1px; text-transform:uppercase; cursor:pointer; color:var(--steel-light);
+    font-family:'JetBrains Mono',monospace; font-weight:500;
+  }
+  .tab.active{background:var(--orange); color:#fff; border-color:var(--orange);}
+  .btn{
+    background:var(--orange); color:#fff; border:none; padding:10px 18px; border-radius:3px;
+    font-family:'Oswald',sans-serif; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;
+    font-size:13px; cursor:pointer; box-shadow:0 2px 0 var(--orange-dark);
+  }
+  .btn:active{transform:translateY(1px); box-shadow:0 1px 0 var(--orange-dark);}
+  .btn:disabled{opacity:0.45; cursor:not-allowed; box-shadow:none;}
+  .btn.ghost{background:transparent; color:var(--steel); border:1px solid var(--line); box-shadow:none;}
+  .btn.small{padding:6px 10px; font-size:11px;}
+  .btn.danger{background:var(--red); box-shadow:0 2px 0 #8a2a20;}
+
+  .search-box{flex:1; min-width:180px; padding:8px 10px; border:1px solid var(--line); border-radius:3px; font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--panel-alt); color:var(--steel);}
+
+  .wo{
+    background:var(--panel); border:1px solid var(--line); border-left:6px solid var(--steel-light); border-radius:4px;
+    padding:14px 16px; margin-bottom:10px; display:grid; grid-template-columns: 1fr auto auto; gap:12px; align-items:center;
+  }
+  .wo.status-in{border-left-color:var(--blue);} .wo.status-progress{border-left-color:var(--amber);}
+  .wo.status-hold{border-left-color:var(--red);} .wo.status-ready{border-left-color:var(--green);}
+  .wo.status-invoiced{border-left-color:var(--steel-light); opacity:0.7;}
+
+  .wo-main .idrow{font-size:10px; color:var(--steel-light); letter-spacing:1px; display:flex; gap:10px; flex-wrap:wrap;}
+  .wo-main .cust{font-family:'Oswald',sans-serif; font-weight:600; font-size:16px; margin:3px 0 1px; color:var(--ink);}
+  .wo-main .veh{font-size:12px; color:var(--steel); font-weight:600;}
+  .wo-main .desc{font-size:12px; color:var(--steel-light); line-height:1.4; margin-top:3px;}
+  .wo-main .codes{margin-top:6px; display:flex; gap:5px; flex-wrap:wrap;}
+  .code-chip{font-size:9px; background:var(--panel-alt); border:1px solid var(--line); border-radius:3px; padding:2px 6px; letter-spacing:0.5px; color:var(--steel);}
+  .wo-main .meta{font-size:10px; color:var(--steel-light); margin-top:5px;}
+
+  .status-badge{font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:4px 9px; border-radius:20px; font-weight:600; white-space:nowrap; text-align:center;}
+  .status-in .status-badge{background:rgba(92,147,201,0.18); color:var(--blue);}
+  .status-progress .status-badge{background:rgba(219,164,58,0.18); color:var(--amber);}
+  .status-hold .status-badge{background:rgba(208,87,74,0.18); color:var(--red);}
+  .status-ready .status-badge{background:rgba(95,174,92,0.18); color:var(--green);}
+  .status-invoiced .status-badge{background:rgba(139,150,160,0.18); color:var(--steel-light);}
+
+  .priority-badge{font-size:9px; letter-spacing:1px; text-transform:uppercase; padding:2px 7px; border-radius:3px; font-weight:700; margin-left:6px;}
+  .p-rush{background:var(--red); color:#fff;} .p-normal{background:var(--panel-alt); color:var(--steel-light);}
+
+  .wo-actions{display:flex; flex-direction:column; gap:6px;}
+  select.mini{font-family:'JetBrains Mono',monospace; font-size:10px; padding:4px; border-radius:3px; border:1px solid var(--line); background:var(--panel-alt); color:var(--steel);}
+
+  .empty{text-align:center; padding:50px 20px; color:var(--steel-light); border:1px dashed var(--line); border-radius:6px; background:var(--panel);}
+  .empty .big{font-family:'Oswald',sans-serif; font-size:18px; color:var(--ink); margin-bottom:6px;}
+
+  .overlay{position:fixed; inset:0; background:rgba(4,6,8,0.75); display:flex; align-items:flex-start; justify-content:center; z-index:50; padding:24px 16px; overflow-y:auto;}
+  .modal{background:var(--bg); border-radius:8px; padding:24px; width:100%; max-width:660px; border:1px solid var(--line); margin-bottom:40px;}
+  .modal h2{font-family:'Oswald',sans-serif; margin-top:0; font-size:20px; text-transform:uppercase; letter-spacing:1px; color:var(--ink);}
+  .section-label{font-family:'Oswald',sans-serif; font-size:12px; text-transform:uppercase; letter-spacing:1.5px; color:var(--orange); margin:20px 0 8px; padding-bottom:5px; border-bottom:1px solid var(--line);}
+  .section-label:first-of-type{margin-top:0;}
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--steel-light); margin-bottom:4px;}
+  .field input, .field textarea, .field select{width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:4px; font-family:'JetBrains Mono',monospace; font-size:13px; background:var(--panel-alt); color:var(--steel);}
+  .field textarea{resize:vertical; min-height:60px;}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .row3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  .row4{display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:18px;}
+
+  .code-line{background:var(--panel); border:1px solid var(--line); border-radius:4px; padding:10px; margin-bottom:8px;}
+  .code-line-top{display:grid; grid-template-columns:1fr 1fr 24px; gap:8px; align-items:end;}
+  .code-line select, .code-line input{padding:7px 8px; font-size:12px;}
+  .code-line .notes{margin-top:6px;}
+  .code-tag{display:inline-block; font-size:10px; background:var(--steel-dark); color:var(--ink); padding:2px 7px; border-radius:3px; margin-top:5px; letter-spacing:0.5px;}
+  .remove-x{cursor:pointer; color:var(--orange); font-weight:700; text-align:center; padding-bottom:8px;}
+
+  .parts-row{display:grid; grid-template-columns:1fr 60px 70px 24px; gap:6px; margin-bottom:6px; align-items:center;}
+  .parts-row input{padding:6px 8px; font-size:12px;}
+  .total-line{display:flex; justify-content:space-between; padding-top:10px; margin-top:8px; border-top:1px solid var(--line); font-family:'Oswald',sans-serif; font-weight:600; font-size:16px; color:var(--ink);}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:20px;}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:14px;}
+  .card .val{font-family:'Oswald',sans-serif; font-size:26px; font-weight:700; color:var(--orange);}
+  .card .lbl{font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--steel-light); margin-top:4px;}
+  .report-table{width:100%; border-collapse:collapse; background:var(--panel); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  .report-table th, .report-table td{text-align:left; padding:9px 12px; font-size:12px; border-bottom:1px solid var(--line); color:var(--steel);}
+  .report-table th{background:var(--steel-dark); color:var(--ink); text-transform:uppercase; letter-spacing:1px; font-size:10px;}
+  .report-table tr:last-child td{border-bottom:none;}
+  .report-block{margin-bottom:24px;}
+  .filter-row{display:flex; gap:10px; align-items:end; margin-bottom:18px; flex-wrap:wrap;}
+  .filter-row .field{margin-bottom:0; min-width:150px;}
+
+  .admin-block{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:18px; margin-bottom:18px;}
+  .mech-row{display:flex; gap:8px; align-items:center; margin-bottom:6px;}
+  .mech-row span{flex:1; font-size:13px; color:var(--steel);}
+
+  .clock-card{
+    background:var(--panel); border:1px solid var(--line); border-left:6px solid var(--steel-light);
+    border-radius:4px; padding:14px 16px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+  }
+  .clock-card.on{border-left-color:var(--green);}
+  .clock-card .name{font-family:'Oswald',sans-serif; font-weight:600; font-size:16px; color:var(--ink);}
+  .clock-card .status{font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--steel-light); margin-top:2px;}
+  .clock-card.on .status{color:var(--green);}
+  .clock-card .elapsed{font-size:12px; color:var(--steel-light); margin-top:2px;}
+
+  /* Dashboard */
+  .dash-grid{display:grid; grid-template-columns:2fr 1fr; gap:16px; align-items:start;}
+  .dash-col{display:flex; flex-direction:column; gap:16px;}
+  .dash-panel{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px;}
+  .dash-panel .section-label{margin-top:0;}
+  .dash-list-row{display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--line); font-size:12px;}
+  .dash-list-row:last-child{border-bottom:none;}
+  .dash-list-row .name{font-weight:600; color:var(--ink);}
+  .dash-empty{font-size:12px; color:var(--steel-light); padding:6px 0;}
+  @media(max-width:800px){ .dash-grid{grid-template-columns:1fr;} }
+
+  @media(max-width:600px){
+    .wo{grid-template-columns:1fr;} .wo-actions{flex-direction:row; flex-wrap:wrap;}
+    .plate{flex-direction:column; align-items:flex-start;}
+    .row2,.row3,.row4{grid-template-columns:1fr 1fr;}
+  }
+
+  /* Label maker */
+  .label-preview-wrap{background:#1a1e22; border:1px solid var(--line); border-radius:6px; padding:16px; display:flex; justify-content:center; margin:10px 0;}
+  .label-tag{background:#fff; color:#111; border-radius:2px; box-shadow:0 2px 6px rgba(0,0,0,0.4); padding:6px 8px; display:flex; flex-direction:column; justify-content:center; gap:2px; font-family:'JetBrains Mono',monospace; overflow:hidden;}
+  .label-tag .lbl-shop{font-size:8px; letter-spacing:0.5px; text-transform:uppercase; color:#555;}
+  .label-tag .lbl-name{font-family:'Oswald',sans-serif; font-weight:600; font-size:11px; line-height:1.15; color:#111;}
+  .label-tag .lbl-partnum{font-size:8px; color:#444;}
+  .label-tag .lbl-price{font-family:'Oswald',sans-serif; font-weight:700; font-size:15px; color:#111; margin-top:2px;}
+  .label-tag svg{width:100%; height:26px; margin-top:2px;}
+  #printArea{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{display:block; position:absolute; top:0; left:0; width:100%; margin:0; padding:0;}
+    .label-tag{page-break-inside:avoid; box-shadow:none; box-sizing:border-box; background:#fff; color:#111;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="plate">
+    <div>
+      <h1>Shop Tracker</h1>
+      <div class="sub">Work Orders · Hydraulic Repair Facility</div>
+    </div>
+    <div class="gauge-mini">
+      <div class="gauge"><div class="num" id="gaugeActive">0</div><div class="lbl">Active</div></div>
+      <div class="gauge"><div class="num" id="gaugeHold">0</div><div class="lbl">On Hold</div></div>
+      <div class="gauge"><div class="num" id="gaugeReady">0</div><div class="lbl">Ready</div></div>
+    </div>
+  </div>
+
+  <div class="mainnav" id="mainnav">
+    <div class="navtab active" data-view="dashboard">Dashboard</div>
+    <div class="navtab" data-view="workorders">Work Orders</div>
+    <div class="navtab" data-view="timeclock">Time Clock</div>
+    <div class="navtab" data-view="reports">Reports</div>
+    <div class="navtab" data-view="admin">Admin</div>
+  </div>
+
+  <div class="view active" id="view-dashboard">
+    <div class="dash-grid">
+      <div class="dash-col">
+        <div class="cards" id="dashCards"></div>
+        <div class="dash-panel">
+          <div class="section-label">Recent Work Orders</div>
+          <div id="dashRecent"></div>
+        </div>
+      </div>
+      <div class="dash-col">
+        <div class="dash-panel">
+          <div class="section-label">On the Clock</div>
+          <div id="dashClocked"></div>
+        </div>
+        <div class="dash-panel">
+          <div class="section-label">Rush Jobs</div>
+          <div id="dashRush"></div>
+        </div>
+        <div class="dash-panel">
+          <div class="section-label">On Hold</div>
+          <div id="dashHold"></div>
+        </div>
+        <div class="dash-panel">
+          <div class="section-label">Low Stock</div>
+          <div id="dashLowStock"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view" id="view-workorders">
+    <div id="clockBanner" style="display:none; background:rgba(208,87,74,0.15); border:1px solid var(--red); color:var(--red); padding:10px 14px; border-radius:4px; font-size:12px; margin-bottom:14px; font-weight:600;">
+      Nobody is clocked in. Clock in on the Time Clock tab to create or edit work orders.
+    </div>
+    <div class="toolbar">
+      <div class="tabs" id="tabs">
+        <div class="tab active" data-filter="all">All</div>
+        <div class="tab" data-filter="in">Checked In</div>
+        <div class="tab" data-filter="progress">In Progress</div>
+        <div class="tab" data-filter="hold">On Hold</div>
+        <div class="tab" data-filter="ready">Ready</div>
+        <div class="tab" data-filter="invoiced">Invoiced</div>
+      </div>
+      <button class="btn" id="newJobBtn">+ New Work Order</button>
+    </div>
+    <input class="search-box" id="searchBox" placeholder="Search WO #, customer, unit #, VIN, plate...">
+    <div id="jobList" style="margin-top:14px;"></div>
+  </div>
+
+  <div class="view" id="view-timeclock">
+    <div id="clockList"></div>
+    <div class="admin-block" style="margin-top:18px;">
+      <div class="section-label">Add Someone to the Roster</div>
+      <div class="row2">
+        <input id="newClockName" placeholder="Employee name">
+        <button class="btn small" id="addClockNameBtn">+ Add to Roster</button>
+      </div>
+      <p style="font-size:11px; color:var(--steel-light); margin-bottom:0;">This is the same roster used for "Assigned Mechanic" on work orders.</p>
+    </div>
+  </div>
+
+  <div class="view" id="view-reports">
+    <div class="filter-row">
+      <div class="field"><label>From</label><input type="date" id="rep-from"></div>
+      <div class="field"><label>To</label><input type="date" id="rep-to"></div>
+      <button class="btn small" id="repApplyBtn">Apply</button>
+      <button class="btn small ghost" id="repClearBtn">Clear</button>
+    </div>
+    <div class="cards" id="repCards"></div>
+    <div class="report-block">
+      <div class="section-label">Revenue by Month (invoiced)</div>
+      <table class="report-table" id="repRevenueTable"></table>
+    </div>
+    <div class="report-block">
+      <div class="section-label">Work Orders by Mechanic</div>
+      <table class="report-table" id="repMechTable"></table>
+    </div>
+    <div class="report-block">
+      <div class="section-label">Most Serviced Systems</div>
+      <table class="report-table" id="repSystemTable"></table>
+    </div>
+    <div class="report-block">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="section-label" style="margin:0;">Low Stock / Reorder Report</div>
+        <button class="btn small ghost" id="printReorderBtn" type="button">🖨️ Print Reorder List</button>
+      </div>
+      <table class="report-table" id="repReorderTable"></table>
+    </div>
+    <div class="report-block">
+      <div class="section-label">Counter Sales</div>
+      <table class="report-table" id="repSalesTable"></table>
+    </div>
+  </div>
+
+  <div class="view" id="view-admin">
+    <div class="admin-block">
+      <div class="section-label">Shop Info (appears on invoices)</div>
+      <div class="row2">
+        <div class="field"><label>Shop Name</label><input id="ad-shopname"></div>
+        <div class="field"><label>Phone</label><input id="ad-shopphone"></div>
+      </div>
+      <div class="field"><label>Address</label><input id="ad-shopaddress"></div>
+      <div class="row3">
+        <div class="field"><label>Manager Name</label><input id="ad-managername" placeholder="Who gets notified"></div>
+        <div class="field"><label>Manager Phone (for text alerts)</label><input id="ad-managerphone" placeholder="e.g. 555-123-4567"></div>
+        <div class="field"><label>Manager Email (optional)</label><input id="ad-manageremail" placeholder="manager@example.com"></div>
+      </div>
+      <button class="btn small" id="saveShopInfoBtn">Save Shop Info</button>
+    </div>
+
+    <div class="admin-block">
+      <div class="section-label">Mechanics</div>
+      <div id="mechList"></div>
+      <div class="row2" style="margin-top:8px;">
+        <input id="newMechName" placeholder="Mechanic name">
+        <button class="btn small" id="addMechBtn">+ Add Mechanic</button>
+      </div>
+    </div>
+
+    <div class="admin-block">
+      <div class="section-label">Inventory Control</div>
+      <p style="font-size:11px; color:var(--steel-light); margin-top:0;">Parts added here show up in the Parts &amp; Labor picker on every work order. Marking a job Invoiced automatically deducts the quantity used from stock; reverting it back out of Invoiced puts it back.</p>
+      <div class="row4">
+        <div class="field"><label>Part Name</label><input id="inv-name" placeholder="e.g. Hydraulic Hose 1/2in"></div>
+        <div class="field"><label>Part # (optional)</label><input id="inv-partnum"></div>
+        <div class="field"><label>Qty on Hand</label><input id="inv-qty" type="number" min="0" step="1" value="0"></div>
+        <div class="field"><label>Sale Price ($)</label><input id="inv-price" type="number" min="0" step="0.01" value="0"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Reorder Level (optional — flags low stock)</label><input id="inv-reorder" type="number" min="0" step="1"></div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn small" id="addInventoryBtn">+ Add Part to Inventory</button>
+        <button class="btn small ghost" id="receiveShipmentBtn" type="button">📷 Receive Shipment</button>
+        <button class="btn small ghost" id="counterSaleBtn" type="button">🛒 Counter Sale</button>
+      </div>
+      <div id="inventoryList" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="admin-block">
+      <div class="section-label">Data Management</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn small ghost" id="exportDataBtn">Export All Data (JSON)</button>
+        <button class="btn small danger" id="clearDataBtn">Clear All Work Orders</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="modalRoot"></div>
+<div id="printArea"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy, updateDoc, increment, arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+import {
+  getStorage, ref as storageRef, uploadBytes, getDownloadURL
+} from "https://www.gstatic.com/firebasejs/10.13.2/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCzEjaRbGeIXTvBgsoUzotUbUvfXsEvKW0",
+  authDomain: "delta-63a97.firebaseapp.com",
+  databaseURL: "https://delta-63a97-default-rtdb.firebaseio.com",
+  projectId: "delta-63a97",
+  storageBucket: "delta-63a97.firebasestorage.app",
+  messagingSenderId: "155384140323",
+  appId: "1:155384140323:web:5eb61cb392d52b63715796",
+  measurementId: "G-1KLDL649FF"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+const storage = getStorage(fbApp);
+const jobsCol = collection(db, 'workorders');
+const settingsDocRef = doc(db, 'settings', 'shop');
+const timeclockCol = collection(db, 'timeclock');
+const inventoryCol = collection(db, 'inventory');
+const salesCol = collection(db, 'sales');
+
+const STATUS_LABELS = {in:'Checked In', progress:'In Progress', hold:'On Hold', ready:'Ready for Pickup', invoiced:'Invoiced'};
+
+const CODES = [{"code": "23AA", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM LEVER"}, {"code": "23AB", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM CONTROL"}, {"code": "23AC", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM PRESSURE GAUGE"}, {"code": "23AD", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM FILTER"}, {"code": "23AE", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM SCREEN"}, {"code": "23AF", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM HOSE/LINE"}, {"code": "23AG", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM/HOSE REEL"}, {"code": "23AH", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM FITTINGS"}, {"code": "23AI", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM FAN MOTOR"}, {"code": "23AJ", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM FLUID"}, {"code": "23AK", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM ASSEMBLY"}, {"code": "23AZ", "system": "HYDRAULIC SYSTEM", "component": "HYDRAULIC SYSTEM OTHER"}, {"code": "23BA", "system": "HYDRAULIC RESERVOIR/TANK", "component": "HYDRAULIC RESERVOIR/TANK SIGHT GLASS"}, {"code": "23BB", "system": "HYDRAULIC RESERVOIR/TANK", "component": "HYDRAULIC RESERVOIR/TANK DIP STICK"}, {"code": "23BC", "system": "HYDRAULIC RESERVOIR/TANK", "component": "HYDRAULIC RESERVOIR/TANK CAP"}, {"code": "23BD", "system": "HYDRAULIC RESERVOIR/TANK", "component": "HYDRAULIC RESERVOIR/TANK ASSEMBLY"}, {"code": "23BZ", "system": "HYDRAULIC RESERVOIR/TANK", "component": "HYDRAULIC RESERVOIR/TANK OTHER"}, {"code": "23CA", "system": "HYDRAULIC PUMP", "component": "HYDRAULIC PUMP DRIVE CHAIN"}, {"code": "23CB", "system": "HYDRAULIC PUMP", "component": "HYDRAULIC PUMP DRIVE GEAR"}, {"code": "23CC", "system": "HYDRAULIC PUMP", "component": "HYDRAULIC PUMP SEAL/O-RING/GASKET"}, {"code": "23CD", "system": "HYDRAULIC PUMP", "component": "HYDRAULIC PUMP PRESSURE REGULATOR"}, {"code": "23CE", "system": "HYDRAULIC PUMP", "component": "HYDRAULIC PUMP ASSEMBLY"}, {"code": "23CZ", "system": "HYDRAULIC PUMP", "component": "HYDRAULIC PUMP OTHER"}, {"code": "23DA", "system": "HYDRAULIC VALVE", "component": "HYDRAULIC VALVE FLOW CONTROL"}, {"code": "23DB", "system": "HYDRAULIC VALVE", "component": "HYDRAULIC VALVE CHECK"}, {"code": "23DC", "system": "HYDRAULIC VALVE", "component": "HYDRAULIC VALVE PRESSURE REGULATOR"}, {"code": "23DD", "system": "HYDRAULIC VALVE", "component": "HYDRAULIC VALVE DRAIN"}, {"code": "23DE", "system": "HYDRAULIC VALVE", "component": "HYDRAULIC VALVE JUNCTION BLOCK"}, {"code": "23DF", "system": "HYDRAULIC VALVE", "component": "HYDRAULIC VALVE HOLDING"}, {"code": "23DG", "system": "HYDRAULIC VALVE", "component": "HYDRAULIC VALVE ASSEMBLY"}, {"code": "23DZ", "system": "HYDRAULIC VALVE", "component": "HYDRAULIC VALVE OTHER"}, {"code": "23EA", "system": "HYDRAULIC CYLINDER GENERAL", "component": "HYDRAULIC CYLINDER GENERAL GLAND"}, {"code": "23EB", "system": "HYDRAULIC CYLINDER GENERAL", "component": "HYDRAULIC CYLINDER GENERAL SEAL/O-RING/GASKET"}, {"code": "23EC", "system": "HYDRAULIC CYLINDER GENERAL", "component": "HYDRAULIC CYLINDER GENERAL PACKING"}, {"code": "23ED", "system": "HYDRAULIC CYLINDER GENERAL", "component": "HYDRAULIC CYLINDER GENERAL RAM"}, {"code": "23EE", "system": "HYDRAULIC CYLINDER GENERAL", "component": "HYDRAULIC CYLINDER GENERAL PISTON"}, {"code": "23EF", "system": "HYDRAULIC CYLINDER GENERAL", "component": "HYDRAULIC CYLINDER GENERAL KIT"}, {"code": "23EG", "system": "HYDRAULIC CYLINDER GENERAL", "component": "HYDRAULIC CYLINDER GENERAL ASSEMBLY"}, {"code": "23EZ", "system": "HYDRAULIC CYLINDER GENERAL", "component": "HYDRAULIC CYLINDER GENERAL OTHER"}, {"code": "23FA", "system": "HYDRAULIC TILT CYLINDER", "component": "HYDRAULIC TILT CYLINDER GLAND"}, {"code": "23FB", "system": "HYDRAULIC TILT CYLINDER", "component": "HYDRAULIC TILT CYLINDER SEAL/O-RING/GASKET"}, {"code": "23FC", "system": "HYDRAULIC TILT CYLINDER", "component": "HYDRAULIC TILT CYLINDER PACKING"}, {"code": "23FD", "system": "HYDRAULIC TILT CYLINDER", "component": "HYDRAULIC TILT CYLINDER RAM"}, {"code": "23FE", "system": "HYDRAULIC TILT CYLINDER", "component": "HYDRAULIC TILT CYLINDER PISTON"}, {"code": "23FF", "system": "HYDRAULIC TILT CYLINDER", "component": "HYDRAULIC TILT CYLINDER KIT"}, {"code": "23FG", "system": "HYDRAULIC TILT CYLINDER", "component": "HYDRAULIC TILT CYLINDER  ASSEMBLY"}, {"code": "23FZ", "system": "HYDRAULIC TILT CYLINDER", "component": "HYDRAULIC TILT CYLINDER OTHER"}, {"code": "23GA", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER GLAND"}, {"code": "23GB", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER SEAL/O-RING/GASKET"}, {"code": "23GC", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER PACKING"}, {"code": "23GD", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER RAM"}, {"code": "23GE", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER PISTON"}, {"code": "23GF", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER KIT"}, {"code": "23GG", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER  ASSEMBLY"}, {"code": "23GH", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER  ASSEMBLY RIGHT"}, {"code": "23GI", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER  ASSEMBLY LEFT"}, {"code": "23GZ", "system": "HYDRAULIC LIFT CYLINDER", "component": "HYDRAULIC LIFT CYLINDER OTHER"}, {"code": "23HA", "system": "HYDRAULIC FORK SHIFT CYLINDER", "component": "HYDRAULIC /FORK SHIFT CYLINDER GLAND"}, {"code": "23HB", "system": "HYDRAULIC FORK SHIFT CYLINDER", "component": "HYDRAULIC /FORK SHIFT CYLINDER SEAL/O-RING/GASKET"}, {"code": "23HC", "system": "HYDRAULIC FORK SHIFT CYLINDER", "component": "HYDRAULIC /FORK SHIFT CYLINDER PACKING"}, {"code": "23HD", "system": "HYDRAULIC FORK SHIFT CYLINDER", "component": "HYDRAULIC /FORK SHIFT CYLINDER RAM"}, {"code": "23HE", "system": "HYDRAULIC FORK SHIFT CYLINDER", "component": "HYDRAULIC /FORK SHIFT CYLINDER PISTON"}, {"code": "23HF", "system": "HYDRAULIC FORK SHIFT CYLINDER", "component": "HYDRAULIC /FORK SHIFT CYLINDER KIT"}, {"code": "23HG", "system": "HYDRAULIC FORK SHIFT CYLINDER", "component": "HYDRAULIC /FORK SHIFT CYLINDER ASSEMBLY"}, {"code": "23HZ", "system": "HYDRAULIC FORK SHIFT CYLINDER", "component": "HYDRAULIC /FORK SHIFT CYLINDER OTHER"}, {"code": "23IA", "system": "HYDRAULIC CARRIAGE SHIFT CYLINDER", "component": "HYDRAULIC /CARRIAGE SHIFT CYLINDER GLAND"}, {"code": "23IB", "system": "HYDRAULIC CARRIAGE SHIFT CYLINDER", "component": "HYDRAULIC /CARRIAGE SHIFT CYLINDER SEAL/O-RING/GASKET"}, {"code": "23IC", "system": "HYDRAULIC CARRIAGE SHIFT CYLINDER", "component": "HYDRAULIC /CARRIAGE SHIFT CYLINDER PACKING"}, {"code": "23ID", "system": "HYDRAULIC CARRIAGE SHIFT CYLINDER", "component": "HYDRAULIC /CARRIAGE SHIFT CYLINDER RAM"}, {"code": "23IE", "system": "HYDRAULIC CARRIAGE SHIFT CYLINDER", "component": "HYDRAULIC /CARRIAGE SHIFT CYLINDER PISTON"}, {"code": "23IF", "system": "HYDRAULIC CARRIAGE SHIFT CYLINDER", "component": "HYDRAULIC /CARRIAGE SHIFT CYLINDER KIT"}, {"code": "23IG", "system": "HYDRAULIC CARRIAGE SHIFT CYLINDER", "component": "HYDRAULIC /CARRIAGE SHIFT CYLINDER ASSEMBLY"}, {"code": "23IZ", "system": "HYDRAULIC CARRIAGE SHIFT CYLINDER", "component": "HYDRAULIC /CARRIAGE SHIFT CYLINDER OTHER"}, {"code": "23JA", "system": "HYDRAULIC SIDE SHIFT CYLINDER", "component": "HYDRAULIC /SIDE SHIFT CYLINDER GLAND"}, {"code": "23JB", "system": "HYDRAULIC SIDE SHIFT CYLINDER", "component": "HYDRAULIC /SIDE SHIFT CYLINDER SEAL/O-RING/GASKET"}, {"code": "23JC", "system": "HYDRAULIC SIDE SHIFT CYLINDER", "component": "HYDRAULIC /SIDE SHIFT CYLINDER PACKING"}, {"code": "23JD", "system": "HYDRAULIC SIDE SHIFT CYLINDER", "component": "HYDRAULIC /SIDE SHIFT CYLINDER RAM"}, {"code": "23JE", "system": "HYDRAULIC SIDE SHIFT CYLINDER", "component": "HYDRAULIC /SIDE SHIFT CYLINDER PISTON"}, {"code": "23JF", "system": "HYDRAULIC SIDE SHIFT CYLINDER", "component": "HYDRAULIC /SIDE SHIFT CYLINDER KIT"}, {"code": "23JG", "system": "HYDRAULIC SIDE SHIFT CYLINDER", "component": "HYDRAULIC /SIDE SHIFT CYLINDER ASSEMBLY"}, {"code": "23JZ", "system": "HYDRAULIC SIDE SHIFT CYLINDER", "component": "HYDRAULIC /SIDE SHIFT CYLINDER OTHER"}, {"code": "23KA", "system": "HYDRAULIC EXTENSION CYLINDER", "component": "HYDRAULIC EXTENSION CYLINDER GLAND"}, {"code": "23KB", "system": "HYDRAULIC EXTENSION CYLINDER", "component": "HYDRAULIC EXTENSION CYLINDER SEAL/O-RING/GASKET"}, {"code": "23KC", "system": "HYDRAULIC EXTENSION CYLINDER", "component": "HYDRAULIC EXTENSION CYLINDER PACKING"}, {"code": "23KD", "system": "HYDRAULIC EXTENSION CYLINDER", "component": "HYDRAULIC EXTENSION CYLINDER RAM"}, {"code": "23KE", "system": "HYDRAULIC EXTENSION CYLINDER", "component": "HYDRAULIC EXTENSION CYLINDER PISTON"}, {"code": "23KF", "system": "HYDRAULIC EXTENSION CYLINDER", "component": "HYDRAULIC EXTENSION CYLINDER KIT"}, {"code": "23KG", "system": "HYDRAULIC EXTENSION CYLINDER", "component": "HYDRAULIC EXTENSION CYLINDER ASSEMBLY"}, {"code": "23KZ", "system": "HYDRAULIC EXTENSION CYLINDER", "component": "HYDRAULIC EXTENSION CYLINDER OTHER"}, {"code": "23LA", "system": "HYDRAULIC SUSPENSION CYLINDER", "component": "HYDRAULIC SUSPENSION CYLINDER GLAND"}, {"code": "23LB", "system": "HYDRAULIC SUSPENSION CYLINDER", "component": "HYDRAULIC SUSPENSION CYLINDER SEAL/O-RING/GASKET"}, {"code": "23LC", "system": "HYDRAULIC SUSPENSION CYLINDER", "component": "HYDRAULIC SUSPENSION CYLINDER PACKING"}, {"code": "23LD", "system": "HYDRAULIC SUSPENSION CYLINDER", "component": "HYDRAULIC SUSPENSION CYLINDER RAM"}, {"code": "23LE", "system": "HYDRAULIC SUSPENSION CYLINDER", "component": "HYDRAULIC SUSPENSION CYLINDER PISTON"}, {"code": "23LF", "system": "HYDRAULIC SUSPENSION CYLINDER", "component": "HYDRAULIC SUSPENSION CYLINDER KIT"}, {"code": "23LG", "system": "HYDRAULIC SUSPENSION CYLINDER", "component": "HYDRAULIC SUSPENSION CYLINDER  ASSEMBLY"}, {"code": "23LZ", "system": "HYDRAULIC SUSPENSION CYLINDER", "component": "HYDRAULIC SUSPENSION CYLINDER OTHER"}, {"code": "23MA", "system": "HYDRAULIC ROLL CYLINDER", "component": "HYDRAULIC ROLL CYLINDER GLAND"}, {"code": "23MB", "system": "HYDRAULIC ROLL CYLINDER", "component": "HYDRAULIC ROLL CYLINDER SEAL/O-RING/GASKET"}, {"code": "23MC", "system": "HYDRAULIC ROLL CYLINDER", "component": "HYDRAULIC ROLL CYLINDER PACKING"}, {"code": "23MD", "system": "HYDRAULIC ROLL CYLINDER", "component": "HYDRAULIC ROLL CYLINDER RAM"}, {"code": "23ME", "system": "HYDRAULIC ROLL CYLINDER", "component": "HYDRAULIC ROLL CYLINDER PISTON"}, {"code": "23MF", "system": "HYDRAULIC ROLL CYLINDER", "component": "HYDRAULIC ROLL CYLINDER KIT"}, {"code": "23MG", "system": "HYDRAULIC ROLL CYLINDER", "component": "HYDRAULIC ROLL CYLINDER  ASSEMBLY"}, {"code": "23MZ", "system": "HYDRAULIC ROLL CYLINDER", "component": "HYDRAULIC ROLL CYLINDER OTHER"}, {"code": "23NA", "system": "HYDRAULIC POWER CONVERTER", "component": "HYDRAULIC POWER CONVERTER GLAND"}, {"code": "23NB", "system": "HYDRAULIC POWER CONVERTER", "component": "HYDRAULIC POWER CONVERTER SEAL/O-RING/GASKET"}, {"code": "23NC", "system": "HYDRAULIC POWER CONVERTER", "component": "HYDRAULIC POWER CONVERTER PACKING"}, {"code": "23ND", "system": "HYDRAULIC POWER CONVERTER", "component": "HYDRAULIC POWER CONVERTER RAM"}, {"code": "23NE", "system": "HYDRAULIC POWER CONVERTER", "component": "HYDRAULIC POWER CONVERTER PISTON"}, {"code": "23NF", "system": "HYDRAULIC POWER CONVERTER", "component": "HYDRAULIC POWER CONVERTER KIT"}, {"code": "23NG", "system": "HYDRAULIC POWER CONVERTER", "component": "HYDRAULIC POWER CONVERTER ASSEMBLY"}, {"code": "23NZ", "system": "HYDRAULIC POWER CONVERTER", "component": "HYDRAULIC POWER CONVERTER OTHER"}, {"code": "23OA", "system": "HYDRAULIC MOTOR", "component": "HYDRAULIC MOTOR /SEAL/O-RING/GASKET"}, {"code": "23OB", "system": "HYDRAULIC MOTOR", "component": "HYDRAULIC MOTOR /BEARINGS"}, {"code": "23OC", "system": "HYDRAULIC MOTOR", "component": "HYDRAULIC MOTOR /ASSEMBLY"}, {"code": "23OZ", "system": "HYDRAULIC MOTOR", "component": "HYDRAULIC MOTOR /OTHER"}, {"code": "23PA", "system": "HYDRAULIC ACCUMULATOR", "component": "HYDRAULIC ACCUMULATOR /CHARGE"}, {"code": "23PB", "system": "HYDRAULIC ACCUMULATOR", "component": "HYDRAULIC ACCUMULATOR /VALVE"}, {"code": "23PC", "system": "HYDRAULIC ACCUMULATOR", "component": "HYDRAULIC ACCUMULATOR /ASSEMBLY"}, {"code": "23PZ", "system": "HYDRAULIC ACCUMULATOR", "component": "HYDRAULIC ACCUMULATOR /OTHER"}, {"code": "23QA", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL SEAL/O-RING/GASKET"}, {"code": "23QB", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL SPOOL"}, {"code": "23QC", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL SPRING"}, {"code": "23QD", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL KIT"}, {"code": "23QE", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL HOSES"}, {"code": "23QF", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL LEFT ASSEMBLY"}, {"code": "23QG", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL RIGHT ASSEMBLY"}, {"code": "23QH", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL ASSEMBLY"}, {"code": "23QZ", "system": "HYDRAULIC HOSE REEL", "component": "HYDRAULIC HOSE REEL OTHER"}];
+
+const SYSTEMS = {};
+CODES.forEach(c => { if(!SYSTEMS[c.system]) SYSTEMS[c.system] = []; SYSTEMS[c.system].push(c); });
+const SYSTEM_NAMES = Object.keys(SYSTEMS);
+
+let jobs = [];
+let settings = { shopName:'', shopPhone:'', shopAddress:'', mechanics:[], managerName:'', managerPhone:'', managerEmail:'' };
+let timeclock = {}; // name -> { status: 'in'|'out', clockedInAt, lastClockOutAt }
+let inventory = []; // [{id, name, partNumber, qty, cost, price, reorderLevel}]
+let sales = []; // [{id, inventoryId, partName, partNumber, qty, price, total, customer, soldAt}]
+let currentFilter = 'all';
+let searchTerm = '';
+let currentView = 'dashboard';
+let currentUser = { uid: 'local', email: 'shop' };
+let currentUserRole = 'admin';
+
+function uid(){ return Date.now().toString(36).toUpperCase().slice(-6); }
+function nextWO(){
+  const nums = jobs.map(j => parseInt((j.woNumber||'').replace(/\D/g,''))||0);
+  const max = nums.length ? Math.max(...nums) : 1000;
+  return 'WO-' + (max+1);
+}
+
+let jobsUnsub = null;
+let settingsUnsub = null;
+let timeclockUnsub = null;
+let inventoryUnsub = null;
+let salesUnsub = null;
+
+function startListeners(){
+  const q = query(jobsCol, orderBy('createdAt', 'desc'));
+  jobsUnsub = onSnapshot(q, (snap) => {
+    jobs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+    if(currentView === 'reports') renderReports();
+    if(currentView === 'dashboard') renderDashboard();
+  }, (err) => {
+    console.error('workorders listener error', err);
+  });
+
+  settingsUnsub = onSnapshot(settingsDocRef, (snap) => {
+    settings = snap.exists() ? { shopName:'', shopPhone:'', shopAddress:'', mechanics:[], managerName:'', managerPhone:'', managerEmail:'', ...snap.data() } : settings;
+    renderAdmin();
+    renderTimeClock();
+  }, (err) => {
+    console.error('settings listener error', err);
+  });
+
+  timeclockUnsub = onSnapshot(timeclockCol, (snap) => {
+    timeclock = {};
+    snap.docs.forEach(d => { timeclock[d.id] = d.data(); });
+    renderTimeClock();
+    updateClockBanner();
+    if(currentView === 'dashboard') renderDashboard();
+  }, (err) => {
+    console.error('timeclock listener error', err);
+  });
+
+  inventoryUnsub = onSnapshot(query(inventoryCol, orderBy('name')), (snap) => {
+    inventory = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAdmin();
+    if(currentView === 'dashboard') renderDashboard();
+    if(currentView === 'reports') renderReports();
+  }, (err) => {
+    console.error('inventory listener error', err);
+  });
+
+  salesUnsub = onSnapshot(salesCol, (snap) => {
+    sales = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if(currentView === 'reports') renderReports();
+  }, (err) => {
+    console.error('sales listener error', err);
+  });
+  renderDashboard();
+}
+
+function anyoneClockedIn(){
+  return Object.values(timeclock).some(t => t.status === 'in');
+}
+function updateClockBanner(){
+  const banner = document.getElementById('clockBanner');
+  if(!banner) return;
+  const newBtn = document.getElementById('newJobBtn');
+  const clockedIn = anyoneClockedIn();
+  banner.style.display = clockedIn ? 'none' : 'block';
+  if(newBtn){ newBtn.disabled = !clockedIn; newBtn.style.opacity = clockedIn ? '1' : '0.5'; newBtn.style.cursor = clockedIn ? 'pointer' : 'not-allowed'; }
+}
+function requireClockedIn(){
+  if(anyoneClockedIn()) return true;
+  alert('Nobody is clocked in. Go to the Time Clock tab and clock in before creating or editing work orders.');
+  return false;
+}
+async function persistClockEvent(name, action){
+  try{
+    const ref = doc(timeclockCol, name);
+    if(action === 'in'){
+      await setDoc(ref, { status: 'in', clockedInAt: Date.now(), lastClockOutAt: (timeclock[name]?.lastClockOutAt || null) });
+    } else {
+      await setDoc(ref, { status: 'out', clockedInAt: null, lastClockOutAt: Date.now() });
+    }
+  }catch(e){ console.error('clock event failed', e); alert('Could not update the time clock. Check your connection.'); }
+}
+function formatElapsed(ms){
+  const totalMin = Math.floor(ms/60000);
+  const h = Math.floor(totalMin/60);
+  const m = totalMin%60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+function renderTimeClock(){
+  const box = document.getElementById('clockList');
+  if(!box) return;
+  const roster = settings.mechanics && settings.mechanics.length ? settings.mechanics : [];
+  if(!roster.length){
+    box.innerHTML = '<div class="empty"><div class="big">No one on the roster yet</div>Add employees below to start clocking in/out.</div>';
+    return;
+  }
+  box.innerHTML = roster.map(name => {
+    const t = timeclock[name];
+    const isOn = t && t.status === 'in';
+    const elapsed = isOn && t.clockedInAt ? formatElapsed(Date.now() - t.clockedInAt) : null;
+    return `
+      <div class="clock-card ${isOn?'on':''}">
+        <div>
+          <div class="name">${escapeHtml(name)}</div>
+          <div class="status">${isOn ? 'Clocked In' : 'Clocked Out'}</div>
+          ${elapsed ? `<div class="elapsed">${elapsed} so far</div>` : ''}
+        </div>
+        <button class="btn ${isOn?'danger':''}" data-name="${escapeHtml(name)}" data-action="${isOn?'out':'in'}">${isOn ? 'Clock Out' : 'Clock In'}</button>
+      </div>
+    `;
+  }).join('');
+  box.querySelectorAll('[data-action]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      persistClockEvent(e.target.dataset.name, e.target.dataset.action);
+    });
+  });
+}
+
+// Writes a single work order document to Firestore (create or update)
+async function persistJob(job){
+  try{
+    const { id, ...data } = job;
+    await setDoc(doc(jobsCol, id), data);
+  }catch(e){ console.error('save job failed', e); alert('Could not save to Firebase. Check your connection.'); }
+}
+async function persistDeleteJob(id){
+  try{ await deleteDoc(doc(jobsCol, id)); }
+  catch(e){ console.error('delete job failed', e); alert('Could not delete from Firebase. Check your connection.'); }
+}
+async function saveSettings(){
+  try{ await setDoc(settingsDocRef, settings); }
+  catch(e){ console.error('save settings failed', e); alert('Could not save to Firebase. Check your connection.'); }
+}
+
+function escapeHtml(s){
+  return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function partsTotal(j){ return (j.parts||[]).reduce((s,p)=> s + (Number(p.qty)||0)*(Number(p.price)||0), 0); }
+function computeTotal(j){ return partsTotal(j) + (Number(j.labor)||0); }
+
+// Deducts stock the moment a job becomes invoiced (a "sale"), and puts it back
+// if a job gets un-invoiced later. Only touches parts that were picked from the
+// inventory catalog (they carry an inventoryId) — custom/typed-in parts are skipped.
+async function syncStockForJob(oldStatus, newStatus, jobData){
+  const nowInvoiced = newStatus === 'invoiced';
+  const wasInvoiced = oldStatus === 'invoiced';
+  if(nowInvoiced && !wasInvoiced && !jobData.stockDeducted){
+    for(const p of (jobData.parts||[])){
+      if(p.inventoryId){
+        try{ await updateDoc(doc(inventoryCol, p.inventoryId), { qty: increment(-(Number(p.qty)||0)) }); }
+        catch(e){ console.error('stock deduct failed', e); }
+      }
+    }
+    jobData.stockDeducted = true;
+  } else if(!nowInvoiced && wasInvoiced && jobData.stockDeducted){
+    for(const p of (jobData.parts||[])){
+      if(p.inventoryId){
+        try{ await updateDoc(doc(inventoryCol, p.inventoryId), { qty: increment(Number(p.qty)||0) }); }
+        catch(e){ console.error('stock restock failed', e); }
+      }
+    }
+    jobData.stockDeducted = false;
+  }
+}
+
+function matchesSearch(j, term){
+  if(!term) return true;
+  const t = term.toLowerCase();
+  const hay = [j.woNumber, j.customer, j.vehicle?.unit, j.vehicle?.vin, j.vehicle?.plate, j.vehicle?.make, j.vehicle?.model]
+    .filter(Boolean).join(' ').toLowerCase();
+  return hay.includes(t);
+}
+
+document.getElementById('mainnav').addEventListener('click', (e)=>{
+  const v = e.target.dataset.view;
+  if(!v) return;
+  currentView = v;
+  document.querySelectorAll('.navtab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  if(v==='dashboard') renderDashboard();
+  if(v==='reports') renderReports();
+  if(v==='admin') renderAdmin();
+  if(v==='timeclock') renderTimeClock();
+});
+
+function render(){
+  const list = document.getElementById('jobList');
+  let filtered = currentFilter === 'all' ? jobs : jobs.filter(j => j.status === currentFilter);
+  filtered = filtered.filter(j => matchesSearch(j, searchTerm));
+  const sorted = [...filtered].sort((a,b) => b.createdAt - a.createdAt);
+
+  if(sorted.length === 0){
+    list.innerHTML = `<div class="empty"><div class="big">No work orders here</div>Create a work order to start tracking a repair through the shop.</div>`;
+  } else {
+    list.innerHTML = sorted.map(j => woCardHtml(j)).join('');
+  }
+
+  document.getElementById('gaugeActive').textContent = jobs.filter(j => j.status==='in'||j.status==='progress').length;
+  document.getElementById('gaugeHold').textContent = jobs.filter(j => j.status==='hold').length;
+  document.getElementById('gaugeReady').textContent = jobs.filter(j => j.status==='ready').length;
+
+  list.querySelectorAll('[data-action]').forEach(el => el.addEventListener('click', onCardAction));
+  list.querySelectorAll('.status-select').forEach(el => el.addEventListener('change', onStatusChange));
+}
+
+function woCardHtml(j){
+  const v = j.vehicle || {};
+  const vehLine = [v.year, v.make, v.model].filter(Boolean).join(' ') || 'No vehicle info';
+  const idBits = [v.unit ? 'Unit '+v.unit : null, v.vin ? 'VIN '+v.vin : null, v.plate ? 'Plate '+v.plate+(v.state?(' ('+v.state+')'):'') : null].filter(Boolean).join(' · ');
+  const codes = (j.codeLines||[]).map(c => `<span class="code-chip">${c.code} ${escapeHtml(c.component.replace(c.system,'').trim())}</span>`).join('');
+  return `
+    <div class="wo status-${j.status}">
+      <div class="wo-main">
+        <div class="idrow">
+          <span>${j.woNumber}</span><span>IN ${j.dateIn || '—'}</span>
+          ${j.priority==='rush' ? '<span class="priority-badge p-rush">Rush</span>' : ''}
+        </div>
+        <div class="cust">${escapeHtml(j.customer)}</div>
+        <div class="veh">${escapeHtml(vehLine)}${idBits ? ' — ' + escapeHtml(idBits) : ''}</div>
+        <div class="desc">${escapeHtml(j.complaint)}</div>
+        ${codes ? `<div class="codes">${codes}</div>` : ''}
+        <div class="meta">Parts: $${partsTotal(j).toFixed(2)} · Labor: $${(Number(j.labor)||0).toFixed(2)} · Total: $${computeTotal(j).toFixed(2)}${j.mechanic ? ' · Mechanic: '+escapeHtml(j.mechanic) : ''}</div>
+      </div>
+      <div class="status-badge">${STATUS_LABELS[j.status]}</div>
+      <div class="wo-actions">
+        <select class="mini status-select" data-id="${j.id}">
+          ${Object.keys(STATUS_LABELS).map(s=>`<option value="${s}" ${s===j.status?'selected':''}>${STATUS_LABELS[s]}</option>`).join('')}
+        </select>
+        <button class="btn small ghost" data-action="edit" data-id="${j.id}">Edit</button>
+        <button class="btn small ghost" data-action="invoice" data-id="${j.id}">Invoice</button>
+        <button class="btn small ghost" data-action="textcustomer" data-id="${j.id}">📱 Text Customer</button>
+        ${j.status==='ready' ? `<button class="btn small" data-action="notifymgmt" data-id="${j.id}">🔔 Notify Mgmt: Ready</button>` : ''}
+        ${currentUserRole === 'admin' ? `<button class="btn small danger" data-action="delete" data-id="${j.id}">Delete</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function onStatusChange(e){
+  const id = e.target.dataset.id;
+  const job = jobs.find(j=>j.id===id);
+  if(!requireClockedIn()){ render(); return; } // reset the dropdown to the saved value
+  if(job){
+    const oldStatus = job.status;
+    job.status = e.target.value;
+    syncStockForJob(oldStatus, job.status, job).then(()=> persistJob(job));
+    render();
+  }
+}
+function onCardAction(e){
+  const id = e.target.dataset.id;
+  const action = e.target.dataset.action;
+  const job = jobs.find(j=>j.id===id);
+  if(action==='delete'){
+    if(confirm('Delete this work order? This cannot be undone.')){
+      jobs = jobs.filter(j=>j.id!==id); persistDeleteJob(id); render();
+    }
+  } else if(action==='edit'){
+    if(!requireClockedIn()) return;
+    openJobModal(job);
+  }
+  else if(action==='invoice'){ openInvoiceModal(job); }
+  else if(action==='textcustomer'){ openCustomerTextModal(job); }
+  else if(action==='notifymgmt'){ openNotifyManagementModal(job); }
+}
+
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  if(!e.target.dataset.filter) return;
+  currentFilter = e.target.dataset.filter;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  e.target.classList.add('active');
+  render();
+});
+document.getElementById('searchBox').addEventListener('input', (e)=>{ searchTerm = e.target.value; render(); });
+document.getElementById('newJobBtn').addEventListener('click', ()=>{
+  if(!requireClockedIn()) return;
+  openJobModal(null);
+});
+
+function systemOptionsHtml(selected){
+  return '<option value="">Select system...</option>' + SYSTEM_NAMES.map(s=>`<option value="${escapeHtml(s)}" ${s===selected?'selected':''}>${escapeHtml(s)}</option>`).join('');
+}
+function componentOptionsHtml(system, selectedCode){
+  const list = SYSTEMS[system] || [];
+  return '<option value="">Select component...</option>' + list.map(c=>`<option value="${c.code}" ${c.code===selectedCode?'selected':''}>${escapeHtml(c.component.replace(c.system,'').trim() || c.component)} (${c.code})</option>`).join('');
+}
+function mechanicOptionsHtml(selected){
+  const opts = settings.mechanics && settings.mechanics.length ? settings.mechanics : [];
+  let html = '<option value="">Unassigned</option>';
+  html += opts.map(m=>`<option value="${escapeHtml(m)}" ${m===selected?'selected':''}>${escapeHtml(m)}</option>`).join('');
+  if(selected && !opts.includes(selected)) html += `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)}</option>`;
+  return html;
+}
+
+function openJobModal(job){
+  const isEdit = !!job;
+  const root = document.getElementById('modalRoot');
+  const today = new Date().toISOString().slice(0,10);
+  const v = (isEdit && job.vehicle) ? job.vehicle : {};
+  let codeLines = isEdit ? (job.codeLines||[]).map(c=>({...c})) : [];
+  let partsState = isEdit ? (job.parts||[]).map(p=>({...p})) : [];
+
+  root.innerHTML = `
+    <div class="overlay" id="overlay">
+      <div class="modal">
+        <h2>${isEdit ? 'Edit ' + job.woNumber : 'New Work Order'}</h2>
+
+        <div class="section-label">Customer &amp; Order Info</div>
+        <div class="row2">
+          <div class="field"><label>Customer / Company</label><input id="f-customer" value="${isEdit?escapeHtml(job.customer):''}"></div>
+          <div class="field"><label>Contact Phone</label><input id="f-phone" value="${isEdit?escapeHtml(job.phone||''):''}"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Date In</label><input type="date" id="f-datein" value="${isEdit?job.dateIn:today}"></div>
+          <div class="field"><label>Date Promised</label><input type="date" id="f-datepromised" value="${isEdit?(job.datePromised||''):''}"></div>
+          <div class="field"><label>Priority</label>
+            <select id="f-priority">
+              <option value="normal" ${isEdit&&job.priority==='normal'?'selected':''}>Normal</option>
+              <option value="rush" ${isEdit&&job.priority==='rush'?'selected':''}>Rush</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Assigned Mechanic</label><select id="f-mechanic">${mechanicOptionsHtml(isEdit?job.mechanic:'')}</select></div>
+          <div class="field"><label>Status</label>
+            <select id="f-status">${Object.keys(STATUS_LABELS).map(s=>`<option value="${s}" ${isEdit&&job.status===s?'selected':''}>${STATUS_LABELS[s]}</option>`).join('')}</select>
+          </div>
+        </div>
+
+        <div class="section-label">Vehicle / Equipment Info</div>
+        <div class="row4">
+          <div class="field"><label>Unit #</label><input id="v-unit" value="${escapeHtml(v.unit||'')}"></div>
+          <div class="field"><label>Year</label><input id="v-year" value="${escapeHtml(v.year||'')}"></div>
+          <div class="field"><label>Make</label><input id="v-make" value="${escapeHtml(v.make||'')}"></div>
+          <div class="field"><label>Model</label><input id="v-model" value="${escapeHtml(v.model||'')}"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Vehicle/Equipment Type</label><input id="v-type" placeholder="Truck, Trailer, Forklift, Excavator..." value="${escapeHtml(v.type||'')}"></div>
+          <div class="field"><label>Color</label><input id="v-color" value="${escapeHtml(v.color||'')}"></div>
+          <div class="field"><label>License Plate / State</label><input id="v-plate" value="${escapeHtml(v.plate||'')}"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>VIN / Serial #</label><input id="v-vin" value="${escapeHtml(v.vin||'')}"></div>
+          <div class="field"><label>Engine Serial #</label><input id="v-engine" value="${escapeHtml(v.engine||'')}"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Odometer (mi)</label><input id="v-odometer" value="${escapeHtml(v.odometer||'')}"></div>
+          <div class="field"><label>Engine/Hour Meter Hrs</label><input id="v-hours" value="${escapeHtml(v.hours||'')}"></div>
+          <div class="field"><label>Fuel Type</label><input id="v-fuel" value="${escapeHtml(v.fuel||'')}"></div>
+        </div>
+
+        <div class="section-label">Reported Issue</div>
+        <div class="field"><label>Customer Complaint / Description of Work</label><textarea id="f-complaint">${isEdit?escapeHtml(job.complaint):''}</textarea></div>
+
+        <div class="section-label">System / Component Codes</div>
+        <div id="codeLines"></div>
+        <button class="btn small ghost" id="addCodeBtn" type="button">+ Add System/Component</button>
+
+        <div class="section-label">Hose &amp; Fitting Finder</div>
+        <p style="font-size:11px; color:var(--steel-light); margin-top:0;">Hydraulic hose and fittings are matched by <strong>dash size</strong> (the -4, -6, -8… number) — that's the correct, standard way to pair them, regardless of thread family. Pick your hose spec and the fitting ends you need below; always confirm the exact thread/port against the fitting itself or the machine's spec before installing.</p>
+        <div class="row3">
+          <div class="field"><label>Hose Dash Size</label>
+            <select id="hf-dash">
+              <option value="-4">-4 (1/4")</option>
+              <option value="-6" selected>-6 (3/8")</option>
+              <option value="-8">-8 (1/2")</option>
+              <option value="-10">-10 (5/8")</option>
+              <option value="-12">-12 (3/4")</option>
+              <option value="-16">-16 (1")</option>
+              <option value="-20">-20 (1 1/4")</option>
+              <option value="-24">-24 (1 1/2")</option>
+              <option value="-32">-32 (2")</option>
+            </select>
+          </div>
+          <div class="field"><label>Hose Spec (SAE rating)</label>
+            <select id="hf-hosespec">
+              <option value="100R1AT">100R1AT — 1-Wire</option>
+              <option value="100R2AT">100R2AT — 2-Wire</option>
+              <option value="100R16">100R16 — Compact 2-Wire</option>
+              <option value="100R17">100R17 — Compact 1-Wire</option>
+              <option value="100R12">100R12 — 4-Spiral</option>
+              <option value="100R13">100R13 — 4/6-Spiral (High Pressure)</option>
+            </select>
+          </div>
+          <div class="field"><label>Length (ft, optional)</label><input id="hf-length" type="number" min="0" step="0.5" placeholder="e.g. 6"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Fitting End Type</label>
+            <select id="hf-endtype">
+              <option value="JIC 37&deg; Flare">JIC 37° Flare</option>
+              <option value="ORFS">ORFS (O-Ring Face Seal)</option>
+              <option value="NPTF">NPTF (Pipe Thread)</option>
+              <option value="BSPP">BSPP</option>
+              <option value="Metric">Metric</option>
+              <option value="ORB">ORB (O-Ring Boss)</option>
+            </select>
+          </div>
+          <div class="field"><label>Gender</label>
+            <select id="hf-gender">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+          <div class="field"><label>Angle</label>
+            <select id="hf-angle">
+              <option value="Straight">Straight</option>
+              <option value="45&deg;">45°</option>
+              <option value="90&deg;">90°</option>
+            </select>
+          </div>
+        </div>
+        <div id="hfMatchPreview" style="font-size:12px; background:var(--panel-alt); border:1px solid var(--line); border-radius:4px; padding:10px 12px; margin-bottom:10px;"></div>
+        <button class="btn small" id="hfAddBtn" type="button">+ Add Hose &amp; Fitting to This Work Order</button>
+
+        <div class="section-label">Parts &amp; Labor</div>
+        <div id="partsRows"></div>
+        <button class="btn small ghost" id="addPartBtn" type="button">+ Add Part</button>
+        <div class="field" style="margin-top:12px;"><label>Labor ($)</label><input type="number" id="f-labor" value="${isEdit?(job.labor||0):0}" min="0" step="0.01"></div>
+        <div class="total-line"><span>Job Total</span><span id="jobTotal">$0.00</span></div>
+
+        <div class="modal-actions">
+          <button class="btn ghost" id="cancelBtn">Cancel</button>
+          <button class="btn" id="saveBtn">${isEdit?'Save Changes':'Create Work Order'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  function renderCodeLines(){
+    document.getElementById('codeLines').innerHTML = codeLines.map((cl,i)=>`
+      <div class="code-line">
+        <div class="code-line-top">
+          <div><label style="font-size:9px;color:var(--steel-light);text-transform:uppercase;letter-spacing:1px;">System</label>
+            <select data-i="${i}" class="sys-select">${systemOptionsHtml(cl.system)}</select></div>
+          <div><label style="font-size:9px;color:var(--steel-light);text-transform:uppercase;letter-spacing:1px;">Component</label>
+            <select data-i="${i}" class="comp-select">${cl.system ? componentOptionsHtml(cl.system, cl.code) : '<option value="">Select system first</option>'}</select></div>
+          <div class="remove-x" data-i="${i}" data-action="removecode">✕</div>
+        </div>
+        ${cl.code ? `<span class="code-tag">${cl.code}</span>` : ''}
+        <div class="field notes"><input placeholder="Notes (e.g. left cylinder, replaced 2 seals)" data-i="${i}" class="code-notes" value="${escapeHtml(cl.notes||'')}"></div>
+      </div>
+    `).join('');
+    document.querySelectorAll('.sys-select').forEach(sel=>sel.addEventListener('change', (e)=>{
+      const i = e.target.dataset.i; codeLines[i].system = e.target.value; codeLines[i].code=''; codeLines[i].component=''; renderCodeLines();
+    }));
+    document.querySelectorAll('.comp-select').forEach(sel=>sel.addEventListener('change', (e)=>{
+      const i = e.target.dataset.i; const code = e.target.value; const entry = CODES.find(c=>c.code===code);
+      codeLines[i].code = code; codeLines[i].component = entry?entry.component:''; renderCodeLines();
+    }));
+    document.querySelectorAll('.code-notes').forEach(inp=>inp.addEventListener('input', (e)=>{ codeLines[e.target.dataset.i].notes = e.target.value; }));
+    document.querySelectorAll('[data-action="removecode"]').forEach(x=>x.addEventListener('click', (e)=>{ codeLines.splice(e.target.dataset.i,1); renderCodeLines(); }));
+  }
+  renderCodeLines();
+  document.getElementById('addCodeBtn').onclick = ()=>{ codeLines.push({system:'', code:'', component:'', notes:''}); renderCodeLines(); };
+
+  function inventoryOptionsHtml(selectedId){
+    let html = '<option value="">Custom part (type name below)</option>';
+    html += inventory.map(inv => `<option value="${inv.id}" ${inv.id===selectedId?'selected':''}>${escapeHtml(inv.name)}${inv.partNumber?' ('+escapeHtml(inv.partNumber)+')':''} — ${inv.qty} in stock @ $${Number(inv.price||0).toFixed(2)}</option>`).join('');
+    return html;
+  }
+  function renderParts(){
+    document.getElementById('partsRows').innerHTML = partsState.map((p,i)=>`
+      <div style="margin-bottom:8px;">
+        <select class="part-inv-select" data-i="${i}" style="width:100%; margin-bottom:4px; padding:7px 8px; font-size:11px; border:1px solid var(--line); border-radius:4px; background:var(--panel-alt); color:var(--steel);">
+          ${inventoryOptionsHtml(p.inventoryId)}
+        </select>
+        <div class="parts-row">
+          <input placeholder="Part name" data-i="${i}" data-f="name" value="${escapeHtml(p.name)}" ${p.inventoryId?'readonly style="opacity:0.65;"':''}>
+          <input type="number" placeholder="Qty" data-i="${i}" data-f="qty" value="${p.qty}" min="0" step="1">
+          <input type="number" placeholder="Price" data-i="${i}" data-f="price" value="${p.price}" min="0" step="0.01">
+          <div class="remove-x" data-i="${i}" data-action="removepart">✕</div>
+        </div>
+      </div>
+    `).join('');
+    document.querySelectorAll('.part-inv-select').forEach(sel=>sel.addEventListener('change', (e)=>{
+      const i = e.target.dataset.i;
+      const invId = e.target.value;
+      const inv = inventory.find(x=>x.id===invId);
+      if(inv){
+        partsState[i].inventoryId = inv.id;
+        partsState[i].name = inv.name;
+        partsState[i].price = Number(inv.price)||0;
+      } else {
+        partsState[i].inventoryId = null;
+      }
+      renderParts(); updateJobTotal();
+    }));
+    document.querySelectorAll('.parts-row input').forEach(inp=>inp.addEventListener('input', (e)=>{
+      const i=e.target.dataset.i, f=e.target.dataset.f;
+      if(f==='name' && partsState[i].inventoryId) return; // locked to inventory item name
+      partsState[i][f] = f==='name'?e.target.value:Number(e.target.value);
+      updateJobTotal();
+    }));
+    document.querySelectorAll('[data-action="removepart"]').forEach(x=>x.addEventListener('click',(e)=>{ partsState.splice(e.target.dataset.i,1); renderParts(); updateJobTotal(); }));
+  }
+  function updateJobTotal(){
+    const pt = partsState.reduce((s,p)=>s+(Number(p.qty)||0)*(Number(p.price)||0),0);
+    const labor = Number(document.getElementById('f-labor').value)||0;
+    document.getElementById('jobTotal').textContent = '$'+(pt+labor).toFixed(2);
+  }
+  renderParts(); updateJobTotal();
+  document.getElementById('addPartBtn').onclick = ()=>{ partsState.push({name:'',qty:1,price:0,inventoryId:null}); renderParts(); updateJobTotal(); };
+  document.getElementById('f-labor').addEventListener('input', updateJobTotal);
+
+  function hfNames(){
+    const dash = document.getElementById('hf-dash').value;
+    const hoseSpec = document.getElementById('hf-hosespec').value;
+    const length = document.getElementById('hf-length').value;
+    const endType = document.getElementById('hf-endtype').value.replace('&deg;','°');
+    const gender = document.getElementById('hf-gender').value;
+    const angle = document.getElementById('hf-angle').value.replace('&deg;','°');
+    const hoseName = `Hydraulic Hose ${hoseSpec} ${dash}${length ? ' — ' + length + 'ft' : ''}`;
+    const fittingName = `${dash} ${endType} ${gender} ${angle} Fitting`;
+    return { dash, hoseName, fittingName };
+  }
+  function renderHfPreview(){
+    const { dash, hoseName, fittingName } = hfNames();
+    document.getElementById('hfMatchPreview').innerHTML =
+      `<strong style="color:var(--ink);">Matched on dash size ${dash}:</strong><br>`+
+      `Hose: ${escapeHtml(hoseName)}<br>`+
+      `Fitting: ${escapeHtml(fittingName)}`;
+  }
+  ['hf-dash','hf-hosespec','hf-length','hf-endtype','hf-gender','hf-angle'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', renderHfPreview);
+    document.getElementById(id).addEventListener('change', renderHfPreview);
+  });
+  renderHfPreview();
+
+  document.getElementById('hfAddBtn').onclick = ()=>{
+    const { hoseName, fittingName } = hfNames();
+    [hoseName, fittingName].forEach(partName=>{
+      const match = inventory.find(inv => inv.name.trim().toLowerCase() === partName.trim().toLowerCase());
+      if(match){
+        partsState.push({ name: match.name, qty: 1, price: Number(match.price)||0, inventoryId: match.id });
+      } else {
+        partsState.push({ name: partName, qty: 1, price: 0, inventoryId: null });
+      }
+    });
+    renderParts(); updateJobTotal();
+  };
+
+  document.getElementById('cancelBtn').onclick = closeModal;
+  document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeModal(); };
+  document.getElementById('saveBtn').onclick = ()=>{
+    if(!requireClockedIn()){ closeModal(); return; }
+    const customer = document.getElementById('f-customer').value.trim();
+    if(!customer){ alert('Customer name is required.'); return; }
+    const vehicle = {
+      unit: document.getElementById('v-unit').value.trim(), year: document.getElementById('v-year').value.trim(),
+      make: document.getElementById('v-make').value.trim(), model: document.getElementById('v-model').value.trim(),
+      type: document.getElementById('v-type').value.trim(), color: document.getElementById('v-color').value.trim(),
+      plate: document.getElementById('v-plate').value.trim(), vin: document.getElementById('v-vin').value.trim(),
+      engine: document.getElementById('v-engine').value.trim(), odometer: document.getElementById('v-odometer').value.trim(),
+      hours: document.getElementById('v-hours').value.trim(), fuel: document.getElementById('v-fuel').value.trim(),
+    };
+    const data = {
+      customer, phone: document.getElementById('f-phone').value.trim(),
+      dateIn: document.getElementById('f-datein').value, datePromised: document.getElementById('f-datepromised').value,
+      priority: document.getElementById('f-priority').value, mechanic: document.getElementById('f-mechanic').value,
+      status: document.getElementById('f-status').value, vehicle,
+      complaint: document.getElementById('f-complaint').value.trim(),
+      codeLines: codeLines.filter(c=>c.code),
+      parts: partsState.filter(p=>p.name.trim()!==''),
+      labor: Number(document.getElementById('f-labor').value)||0,
+    };
+    let toSave;
+    let oldStatus;
+    if(isEdit){
+      oldStatus = job.status;
+      const wasInvoiced = job.status !== 'invoiced' && data.status === 'invoiced';
+      Object.assign(job, data);
+      if(wasInvoiced) job.invoicedAt = Date.now();
+      toSave = job;
+    } else {
+      oldStatus = null;
+      toSave = { id: uid(), woNumber: nextWO(), createdAt: Date.now(), ...data };
+      jobs.push(toSave);
+    }
+    syncStockForJob(oldStatus, toSave.status, toSave).then(()=> persistJob(toSave));
+    render(); closeModal();
+  };
+}
+
+function openInvoiceModal(job){
+  const root = document.getElementById('modalRoot');
+  const codesSummary = (job.codeLines||[]).map(c=>`<div>${c.code} — ${escapeHtml(c.component)}${c.notes ? ' ('+escapeHtml(c.notes)+')' : ''}</div>`).join('') || '<div style="color:var(--steel-light);">No system codes logged</div>';
+  const partsRows = (job.parts||[]).map(p=>`<tr><td>${escapeHtml(p.name)}</td><td>${p.qty}</td><td>$${Number(p.price).toFixed(2)}</td><td>$${(p.qty*p.price).toFixed(2)}</td></tr>`).join('');
+  root.innerHTML = `
+    <div class="overlay" id="overlay">
+      <div class="modal">
+        <h2>Invoice — ${job.woNumber}</h2>
+        ${settings.shopName ? `<div style="font-size:12px;margin-bottom:8px;"><strong>${escapeHtml(settings.shopName)}</strong><br>${escapeHtml(settings.shopAddress||'')}<br>${escapeHtml(settings.shopPhone||'')}</div>` : ''}
+        <div class="section-label">${escapeHtml(job.customer)}</div>
+        <div style="font-size:12px;margin-bottom:10px;">${[job.vehicle?.year,job.vehicle?.make,job.vehicle?.model].filter(Boolean).join(' ')} ${job.vehicle?.unit ? '· Unit '+escapeHtml(job.vehicle.unit) : ''}</div>
+        <div class="section-label">Systems Serviced</div>
+        <div style="font-size:11px; margin-bottom:6px;">${codesSummary}</div>
+        <div class="section-label">Parts / Materials</div>
+        <table class="report-table"><tr><th>Part</th><th>Qty</th><th>Price</th><th>Line Total</th></tr>${partsRows || '<tr><td colspan="4" style="color:var(--steel-light);">No parts logged</td></tr>'}</table>
+        <div class="total-line" style="margin-top:12px;"><span>Labor</span><span>$${(Number(job.labor)||0).toFixed(2)}</span></div>
+        <div class="total-line"><span>Total</span><span>$${computeTotal(job).toFixed(2)}</span></div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="cancelBtn">Close</button>
+          <button class="btn" id="markInvoicedBtn">Mark Invoiced</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('cancelBtn').onclick = closeModal;
+  document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeModal(); };
+  document.getElementById('markInvoicedBtn').onclick = ()=>{
+    if(!requireClockedIn()) return;
+    const oldStatus = job.status;
+    job.status = 'invoiced';
+    job.invoicedAt = Date.now();
+    syncStockForJob(oldStatus, job.status, job).then(()=> persistJob(job));
+    render(); closeModal();
+  };
+}
+
+function openReceiveModal(prefillId){
+  const root = document.getElementById('modalRoot');
+  let photoFile = null;
+
+  root.innerHTML = `
+    <div class="overlay" id="overlay">
+      <div class="modal">
+        <h2>Receive Shipment</h2>
+        <p style="font-size:11px; color:var(--steel-light); margin-top:0;">Snap a photo of the shipping label or packing slip, then log what came in. The photo gets saved to that part's record as proof of delivery.</p>
+
+        <div class="section-label">Shipping Label / Packing Slip Photo</div>
+        <div class="field">
+          <input type="file" accept="image/*" capture="environment" id="rcv-photo-input">
+        </div>
+        <div id="rcv-photo-preview"></div>
+
+        <div class="section-label">Part Received</div>
+        <div class="field">
+          <label>Which part?</label>
+          <select id="rcv-part-select">
+            <option value="__new__">+ New Part (not in inventory yet)</option>
+            ${inventory.map(inv=>`<option value="${inv.id}" ${prefillId===inv.id?'selected':''}>${escapeHtml(inv.name)}${inv.partNumber?' — #'+escapeHtml(inv.partNumber):''}</option>`).join('')}
+          </select>
+        </div>
+        <div id="rcv-new-part-fields" style="display:none;">
+          <div class="row2">
+            <div class="field"><label>Part Name</label><input id="rcv-new-name" placeholder="e.g. Hydraulic Hose 1/2in"></div>
+            <div class="field"><label>Part # (optional)</label><input id="rcv-new-partnum"></div>
+          </div>
+          <div class="field"><label>Sale Price ($)</label><input id="rcv-new-price" type="number" min="0" step="0.01" value="0"></div>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Qty Received</label><input id="rcv-qty" type="number" min="1" step="1" value="1"></div>
+          <div class="field"><label>Supplier / Carrier (optional)</label><input id="rcv-supplier" placeholder="e.g. FedEx, Grainger"></div>
+          <div class="field"><label>Date Received</label><input type="date" id="rcv-date" value="${new Date().toISOString().slice(0,10)}"></div>
+        </div>
+        <div class="field"><label>Notes (optional)</label><input id="rcv-notes" placeholder="PO#, tracking #, condition, etc."></div>
+
+        <div class="modal-actions">
+          <button class="btn ghost" id="cancelBtn">Cancel</button>
+          <button class="btn" id="rcvSaveBtn">Mark Received</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  function toggleNewFields(){
+    const isNew = document.getElementById('rcv-part-select').value === '__new__';
+    document.getElementById('rcv-new-part-fields').style.display = isNew ? '' : 'none';
+  }
+  document.getElementById('rcv-part-select').addEventListener('change', toggleNewFields);
+  toggleNewFields();
+
+  document.getElementById('rcv-photo-input').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    photoFile = file;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      document.getElementById('rcv-photo-preview').innerHTML = `<img src="${reader.result}" style="max-width:100%; max-height:220px; border-radius:4px; border:1px solid var(--line); margin-bottom:10px;">`;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('cancelBtn').onclick = closeModal;
+  document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeModal(); };
+
+  document.getElementById('rcvSaveBtn').onclick = async ()=>{
+    const qty = Number(document.getElementById('rcv-qty').value) || 0;
+    if(qty <= 0){ alert('Enter a quantity greater than 0.'); return; }
+    const selectVal = document.getElementById('rcv-part-select').value;
+    const isNew = selectVal === '__new__';
+    const newName = document.getElementById('rcv-new-name').value.trim();
+    if(isNew && !newName){ alert('Enter a part name.'); return; }
+
+    const saveBtn = document.getElementById('rcvSaveBtn');
+    saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+
+    try{
+      const targetId = isNew ? doc(inventoryCol).id : selectVal;
+      let photoURL = '';
+      if(photoFile){
+        const sRef = storageRef(storage, `inventory-receipts/${targetId}/${Date.now()}-${photoFile.name}`);
+        await uploadBytes(sRef, photoFile);
+        photoURL = await getDownloadURL(sRef);
+      }
+      const delivery = {
+        qty, date: document.getElementById('rcv-date').value || new Date().toISOString().slice(0,10),
+        supplier: document.getElementById('rcv-supplier').value.trim(),
+        notes: document.getElementById('rcv-notes').value.trim(),
+        photoURL, receivedAt: Date.now()
+      };
+
+      if(isNew){
+        await setDoc(doc(inventoryCol, targetId), {
+          name: newName,
+          partNumber: document.getElementById('rcv-new-partnum').value.trim(),
+          qty, price: Number(document.getElementById('rcv-new-price').value)||0,
+          reorderLevel: null, photoURL, deliveries: [delivery]
+        });
+      } else {
+        const updatePayload = { qty: increment(qty), deliveries: arrayUnion(delivery) };
+        if(photoURL) updatePayload.photoURL = photoURL;
+        await updateDoc(doc(inventoryCol, targetId), updatePayload);
+      }
+      const labelPreset = isNew
+        ? { name: newName, partNumber: document.getElementById('rcv-new-partnum').value.trim(), price: Number(document.getElementById('rcv-new-price').value)||0 }
+        : null;
+      closeModal();
+      openLabelModal(targetId, qty, labelPreset);
+    }catch(err){
+      console.error('receive shipment failed', err);
+      alert('Could not save the shipment. Check your connection and try again.');
+      saveBtn.disabled = false; saveBtn.textContent = 'Mark Received';
+    }
+  };
+}
+
+const LABEL_PRESETS = {
+  avery5160: { label:'Avery 5160 — Address (1 × 2⅝", 30/sheet)', wIn:2.625, hIn:1, cols:3, rows:10, pageTopIn:0.5, pageSideIn:0.1875, colGapIn:0.125, rowGapIn:0, sheet:true },
+  avery5163: { label:'Avery 5163 — Shipping (2 × 4", 10/sheet)', wIn:4, hIn:2, cols:2, rows:5, pageTopIn:0.5, pageSideIn:0.15625, colGapIn:0.1875, rowGapIn:0, sheet:true },
+  avery5167: { label:'Avery 5167 — Return Address/Barcode (½ × 1¾", 80/sheet)', wIn:1.75, hIn:0.5, cols:4, rows:20, pageTopIn:0.5, pageSideIn:0.3, colGapIn:0.3125, rowGapIn:0, sheet:true },
+  roll2x1: { label:'Thermal Roll Label (2 × 1")', wIn:2, hIn:1, sheet:false },
+  roll1x0_5: { label:'Thermal Roll Label (1 × ½") — small tag', wIn:1, hIn:0.5, sheet:false }
+};
+
+function setDynamicPrintStyle(css){
+  let style = document.getElementById('dynamicPrintStyle');
+  if(!style){ style = document.createElement('style'); style.id = 'dynamicPrintStyle'; document.head.appendChild(style); }
+  style.textContent = css;
+}
+
+function labelPresetPrintCss(preset){
+  if(preset.sheet){
+    return `
+      @page { size: letter; margin: ${preset.pageTopIn}in ${preset.pageSideIn}in; }
+      #printArea .label-sheet{ display:grid; grid-template-columns: repeat(${preset.cols}, ${preset.wIn}in); column-gap:${preset.colGapIn}in; row-gap:${preset.rowGapIn}in; }
+      #printArea .label-tag{ width:${preset.wIn}in; height:${preset.hIn}in; }
+    `;
+  }
+  return `
+    @page { size: ${preset.wIn}in ${preset.hIn}in; margin:0; }
+    #printArea .label-sheet{ display:block; }
+    #printArea .label-tag{ width:${preset.wIn}in; height:${preset.hIn}in; page-break-after: always; }
+  `;
+}
+
+let barcodeLibPromise = null;
+function loadBarcodeLib(){
+  if(window.JsBarcode) return Promise.resolve();
+  if(barcodeLibPromise) return barcodeLibPromise;
+  barcodeLibPromise = new Promise((resolve, reject)=>{
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/JsBarcode/3.11.5/JsBarcode.all.min.js';
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return barcodeLibPromise;
+}
+
+function openLabelModal(inventoryId, defaultCopies, presetData){
+  const inv = presetData || inventory.find(i=>i.id===inventoryId) || { name:'', partNumber:'', price:0 };
+  const root = document.getElementById('modalRoot');
+
+  root.innerHTML = `
+    <div class="overlay" id="overlay">
+      <div class="modal">
+        <h2>Print Inventory Labels</h2>
+        <p style="font-size:11px; color:var(--steel-light); margin-top:0;">Print shelf/bin labels or price tags for this part — good for restocking and for tagging items for sale. Sheet sizes match standard Avery templates so you can print straight onto Avery label stock.</p>
+
+        <div class="row3">
+          <div class="field"><label># of Labels</label><input id="lbl-copies" type="number" min="1" step="1" value="${Math.max(1, Number(defaultCopies)||1)}"></div>
+          <div class="field"><label>Label Size</label>
+            <select id="lbl-size">
+              ${Object.keys(LABEL_PRESETS).map(key=>`<option value="${key}" ${key==='avery5160'?'selected':''}>${LABEL_PRESETS[key].label}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field"><label>Show Barcode</label>
+            <select id="lbl-barcode">
+              <option value="yes">Yes (part #/ID)</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Shop Name on Label (optional)</label><input id="lbl-shopname" value="${escapeHtml(settings.shopName||'')}"></div>
+
+        <div class="section-label">Preview</div>
+        <div class="label-preview-wrap"><div class="label-tag" id="lblPreviewTag"></div></div>
+        <div id="lblSheetInfo" style="font-size:11px; color:var(--steel-light); margin-top:-6px; margin-bottom:10px;"></div>
+
+        <div class="modal-actions">
+          <button class="btn ghost" id="cancelBtn">Close</button>
+          <button class="btn" id="lblPrintBtn">Print Labels</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  function currentPreset(){ return LABEL_PRESETS[document.getElementById('lbl-size').value]; }
+
+  function labelInnerHtml(withBarcodeSvgId){
+    const shopName = document.getElementById('lbl-shopname').value.trim();
+    const showBarcode = document.getElementById('lbl-barcode').value === 'yes';
+    const priceStr = '$' + (Number(inv.price)||0).toFixed(2);
+    return `
+      ${shopName ? `<div class="lbl-shop">${escapeHtml(shopName)}</div>` : ''}
+      <div class="lbl-name">${escapeHtml(inv.name||'Unnamed Part')}</div>
+      ${inv.partNumber ? `<div class="lbl-partnum">Part# ${escapeHtml(inv.partNumber)}</div>` : ''}
+      <div class="lbl-price">${priceStr}</div>
+      ${showBarcode ? `<svg id="${withBarcodeSvgId}"></svg>` : ''}
+    `;
+  }
+
+  async function renderPreview(){
+    const preset = currentPreset();
+    const tag = document.getElementById('lblPreviewTag');
+    tag.style.width = preset.wIn + 'in';
+    tag.style.height = preset.hIn + 'in';
+    tag.innerHTML = labelInnerHtml('lblPreviewBarcode');
+    document.getElementById('lblSheetInfo').textContent = preset.sheet
+      ? `${preset.cols * preset.rows} labels per sheet (${preset.cols} across × ${preset.rows} down)`
+      : `Prints one label per feed on a thermal roll printer`;
+    if(document.getElementById('lbl-barcode').value === 'yes'){
+      try{
+        await loadBarcodeLib();
+        window.JsBarcode('#lblPreviewBarcode', inv.partNumber || inventoryId || inv.name || 'PART', { format:'CODE128', displayValue:false, height:22, margin:0 });
+      }catch(err){ console.error('barcode load failed', err); }
+    }
+  }
+  ['lbl-shopname','lbl-barcode','lbl-size'].forEach(id=>{
+    document.getElementById(id).addEventListener('input', renderPreview);
+    document.getElementById(id).addEventListener('change', renderPreview);
+  });
+  renderPreview();
+
+  document.getElementById('cancelBtn').onclick = closeModal;
+  document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeModal(); };
+
+  document.getElementById('lblPrintBtn').onclick = async ()=>{
+    const copies = Math.max(1, Number(document.getElementById('lbl-copies').value)||1);
+    const preset = currentPreset();
+    const showBarcode = document.getElementById('lbl-barcode').value === 'yes';
+    if(showBarcode){ try{ await loadBarcodeLib(); }catch(err){ console.error('barcode load failed', err); } }
+
+    setDynamicPrintStyle(labelPresetPrintCss(preset));
+
+    const area = document.getElementById('printArea');
+    let tagsHtml = '';
+    for(let i=0;i<copies;i++){
+      tagsHtml += `<div class="label-tag">${labelInnerHtml('lblPrintBarcode-'+i)}</div>`;
+    }
+    area.innerHTML = `<div class="label-sheet">${tagsHtml}</div>`;
+
+    if(showBarcode){
+      for(let i=0;i<copies;i++){
+        try{ window.JsBarcode('#lblPrintBarcode-'+i, inv.partNumber || inventoryId || inv.name || 'PART', { format:'CODE128', displayValue:false, height:22, margin:0 }); }
+        catch(err){ console.error('barcode render failed', err); }
+      }
+    }
+
+    setTimeout(()=>{ window.print(); }, 60);
+    closeModal();
+  };
+}
+
+function openCounterSaleModal(prefillId){
+  const root = document.getElementById('modalRoot');
+  if(!inventory.length){
+    alert('No parts in inventory yet. Add parts under Admin → Inventory Control first.');
+    return;
+  }
+  root.innerHTML = `
+    <div class="overlay" id="overlay">
+      <div class="modal">
+        <h2>Counter Sale</h2>
+        <p style="font-size:11px; color:var(--steel-light); margin-top:0;">Quick walk-up sale — deducts stock and logs the sale without opening a full work order.</p>
+        <div class="field">
+          <label>Part</label>
+          <select id="cs-part-select">
+            ${inventory.map(inv=>`<option value="${inv.id}" ${prefillId===inv.id?'selected':''}>${escapeHtml(inv.name)}${inv.partNumber?' — #'+escapeHtml(inv.partNumber):''} (${inv.qty} in stock)</option>`).join('')}
+          </select>
+        </div>
+        <div class="row3">
+          <div class="field"><label>Qty</label><input id="cs-qty" type="number" min="1" step="1" value="1"></div>
+          <div class="field"><label>Unit Price ($)</label><input id="cs-price" type="number" min="0" step="0.01" value="0"></div>
+          <div class="field"><label>Customer (optional)</label><input id="cs-customer" placeholder="Walk-in"></div>
+        </div>
+        <div class="total-line"><span>Total</span><span id="cs-total">$0.00</span></div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="cancelBtn">Cancel</button>
+          <button class="btn" id="csCompleteBtn">Complete Sale</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  function selectedInv(){ return inventory.find(i=>i.id===document.getElementById('cs-part-select').value); }
+  function updateTotal(){
+    const qty = Number(document.getElementById('cs-qty').value)||0;
+    const price = Number(document.getElementById('cs-price').value)||0;
+    document.getElementById('cs-total').textContent = '$'+(qty*price).toFixed(2);
+  }
+  function onPartChange(){
+    const sel = selectedInv();
+    document.getElementById('cs-price').value = sel ? (Number(sel.price)||0).toFixed(2) : '0.00';
+    updateTotal();
+  }
+  document.getElementById('cs-part-select').addEventListener('change', onPartChange);
+  document.getElementById('cs-qty').addEventListener('input', updateTotal);
+  document.getElementById('cs-price').addEventListener('input', updateTotal);
+  onPartChange();
+
+  document.getElementById('cancelBtn').onclick = closeModal;
+  document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeModal(); };
+
+  document.getElementById('csCompleteBtn').onclick = async ()=>{
+    const invItem = selectedInv();
+    if(!invItem){ alert('Select a part.'); return; }
+    const qty = Number(document.getElementById('cs-qty').value)||0;
+    if(qty <= 0){ alert('Enter a quantity greater than 0.'); return; }
+    if(qty > Number(invItem.qty)){
+      if(!confirm(`Only ${invItem.qty} in stock. Sell anyway (stock will go negative)?`)) return;
+    }
+    const price = Number(document.getElementById('cs-price').value)||0;
+    const customer = document.getElementById('cs-customer').value.trim();
+
+    const btn = document.getElementById('csCompleteBtn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try{
+      await updateDoc(doc(inventoryCol, invItem.id), { qty: increment(-qty) });
+      await setDoc(doc(salesCol), {
+        inventoryId: invItem.id, partName: invItem.name, partNumber: invItem.partNumber||'',
+        qty, price, total: qty*price, customer, soldAt: Date.now()
+      });
+      closeModal();
+      openLabelModal(invItem.id, 1, { name: invItem.name, partNumber: invItem.partNumber, price });
+    }catch(err){
+      console.error('counter sale failed', err);
+      alert('Could not complete the sale. Check your connection and try again.');
+      btn.disabled = false; btn.textContent = 'Complete Sale';
+    }
+  };
+}
+
+function smsLink(phone, body){
+  const digits = (phone||'').replace(/[^\d+]/g,'');
+  return `sms:${digits}?&body=${encodeURIComponent(body)}`;
+}
+function mailtoLink(email, subject, body){
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function openCustomerTextModal(job){
+  const root = document.getElementById('modalRoot');
+  const vehLine = [job.vehicle?.year, job.vehicle?.make, job.vehicle?.model].filter(Boolean).join(' ') || 'your vehicle';
+  const defaultMsg = job.status === 'ready'
+    ? `Hi ${job.customer}, this is ${settings.shopName||'the shop'}. ${vehLine} (WO ${job.woNumber}) is ready for pickup!`
+    : `Hi ${job.customer}, this is ${settings.shopName||'the shop'} checking in on WO ${job.woNumber} for ${vehLine}.`;
+
+  root.innerHTML = `
+    <div class="overlay" id="overlay">
+      <div class="modal">
+        <h2>Text ${escapeHtml(job.customer)}</h2>
+        <p style="font-size:11px; color:var(--steel-light); margin-top:0;">This opens your phone's Messages app with the text prefilled — you review and hit send yourself.</p>
+        <div class="field"><label>Customer Phone</label><input id="tx-phone" value="${escapeHtml(job.phone||'')}" placeholder="Enter phone number"></div>
+        <div class="field"><label>Message</label><textarea id="tx-message" rows="4">${escapeHtml(defaultMsg)}</textarea></div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="cancelBtn">Cancel</button>
+          <a class="btn" id="tx-send-link" href="#">Open in Messages</a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  function updateLink(){
+    const phone = document.getElementById('tx-phone').value.trim();
+    const msg = document.getElementById('tx-message').value;
+    document.getElementById('tx-send-link').href = phone ? smsLink(phone, msg) : '#';
+  }
+  document.getElementById('tx-phone').addEventListener('input', updateLink);
+  document.getElementById('tx-message').addEventListener('input', updateLink);
+  updateLink();
+
+  document.getElementById('tx-send-link').addEventListener('click', (e)=>{
+    const phone = document.getElementById('tx-phone').value.trim();
+    if(!phone){ e.preventDefault(); alert('Enter a phone number first.'); return; }
+    setTimeout(closeModal, 150);
+  });
+  document.getElementById('cancelBtn').onclick = closeModal;
+  document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeModal(); };
+}
+
+function openNotifyManagementModal(job){
+  const root = document.getElementById('modalRoot');
+  const vehLine = [job.vehicle?.year, job.vehicle?.make, job.vehicle?.model].filter(Boolean).join(' ') || 'vehicle';
+  const defaultMsg = `${job.woNumber} — ${job.customer} (${vehLine}) is marked Ready for Pickup. Total: $${computeTotal(job).toFixed(2)}.`;
+  const hasPhone = !!(settings.managerPhone||'').trim();
+  const hasEmail = !!(settings.managerEmail||'').trim();
+  const mgrName = settings.managerName || 'Manager';
+
+  root.innerHTML = `
+    <div class="overlay" id="overlay">
+      <div class="modal">
+        <h2>Notify Management</h2>
+        ${(!hasPhone && !hasEmail) ? `<p style="font-size:12px; color:var(--red);">No manager phone or email is set. Add one under Admin → Shop Info.</p>` : ''}
+        <div class="field"><label>Message</label><textarea id="nm-message" rows="3">${escapeHtml(defaultMsg)}</textarea></div>
+        <div class="modal-actions">
+          <button class="btn ghost" id="cancelBtn">Close</button>
+          ${hasPhone ? `<a class="btn" id="nm-text-link" href="#">Text ${escapeHtml(mgrName)}</a>` : ''}
+          ${hasEmail ? `<a class="btn ghost" id="nm-email-link" href="#">Email ${escapeHtml(mgrName)}</a>` : ''}
+        </div>
+      </div>
+    </div>
+  `;
+
+  function updateLinks(){
+    const msg = document.getElementById('nm-message').value;
+    if(hasPhone) document.getElementById('nm-text-link').href = smsLink(settings.managerPhone, msg);
+    if(hasEmail) document.getElementById('nm-email-link').href = mailtoLink(settings.managerEmail, 'Ready for Pickup — '+job.woNumber, msg);
+  }
+  document.getElementById('nm-message').addEventListener('input', updateLinks);
+  updateLinks();
+
+  const markNotified = ()=>{
+    job.notifiedManagementAt = Date.now();
+    persistJob(job).catch(err=>console.error('notify log failed', err));
+    setTimeout(closeModal, 150);
+  };
+  if(hasPhone) document.getElementById('nm-text-link').addEventListener('click', markNotified);
+  if(hasEmail) document.getElementById('nm-email-link').addEventListener('click', markNotified);
+  document.getElementById('cancelBtn').onclick = closeModal;
+  document.getElementById('overlay').onclick = (e)=>{ if(e.target.id==='overlay') closeModal(); };
+}
+
+function closeModal(){ document.getElementById('modalRoot').innerHTML = ''; }
+
+function statusColorVar(status){
+  return {in:'blue', progress:'amber', hold:'red', ready:'green', invoiced:'steel-light'}[status] || 'steel-light';
+}
+
+function dashOpenJob(id){
+  const job = jobs.find(j=>j.id===id);
+  if(!job) return;
+  if(!requireClockedIn()) return;
+  openJobModal(job);
+}
+
+function renderDashboard(){
+  const cardsBox = document.getElementById('dashCards');
+  if(!cardsBox) return; // view not in DOM yet
+
+  const active = jobs.filter(j=>j.status==='in'||j.status==='progress').length;
+  const hold = jobs.filter(j=>j.status==='hold').length;
+  const ready = jobs.filter(j=>j.status==='ready').length;
+  const invoicedJobs = jobs.filter(j=>j.status==='invoiced');
+  const totalRevenue = invoicedJobs.reduce((s,j)=>s+computeTotal(j),0);
+  const clockedInCount = Object.values(timeclock).filter(t=>t.status==='in').length;
+
+  cardsBox.innerHTML = `
+    <div class="card"><div class="val">${active}</div><div class="lbl">Active Jobs</div></div>
+    <div class="card"><div class="val">${hold}</div><div class="lbl">On Hold</div></div>
+    <div class="card"><div class="val">${ready}</div><div class="lbl">Ready for Pickup</div></div>
+    <div class="card"><div class="val">$${totalRevenue.toFixed(0)}</div><div class="lbl">Total Invoiced</div></div>
+    <div class="card"><div class="val">${clockedInCount}</div><div class="lbl">On the Clock</div></div>
+  `;
+
+  const recent = [...jobs].sort((a,b)=>b.createdAt-a.createdAt).slice(0,6);
+  document.getElementById('dashRecent').innerHTML = recent.length ? recent.map(j=>`
+    <div class="dash-list-row" data-id="${j.id}" style="cursor:pointer;">
+      <div><span class="name">${escapeHtml(j.woNumber)}</span> — ${escapeHtml(j.customer)}</div>
+      <span style="color:var(--${statusColorVar(j.status)}); text-transform:uppercase; letter-spacing:1px; font-size:10px;">${STATUS_LABELS[j.status]}</span>
+    </div>
+  `).join('') : '<div class="dash-empty">No work orders yet</div>';
+
+  const clockedIn = Object.entries(timeclock).filter(([name,t])=>t.status==='in');
+  document.getElementById('dashClocked').innerHTML = clockedIn.length ? clockedIn.map(([name,t])=>`
+    <div class="dash-list-row"><span class="name">${escapeHtml(name)}</span><span style="color:var(--green);">${t.clockedInAt ? formatElapsed(Date.now()-t.clockedInAt) : ''}</span></div>
+  `).join('') : '<div class="dash-empty">Nobody clocked in right now</div>';
+
+  const rush = jobs.filter(j=>j.priority==='rush' && j.status!=='invoiced');
+  document.getElementById('dashRush').innerHTML = rush.length ? rush.map(j=>`
+    <div class="dash-list-row" data-id="${j.id}" style="cursor:pointer;"><span class="name">${escapeHtml(j.woNumber)}</span><span>${escapeHtml(j.customer)}</span></div>
+  `).join('') : '<div class="dash-empty">No rush jobs open</div>';
+
+  const holdJobs = jobs.filter(j=>j.status==='hold');
+  document.getElementById('dashHold').innerHTML = holdJobs.length ? holdJobs.map(j=>`
+    <div class="dash-list-row" data-id="${j.id}" style="cursor:pointer;"><span class="name">${escapeHtml(j.woNumber)}</span><span>${escapeHtml(j.customer)}</span></div>
+  `).join('') : '<div class="dash-empty">Nothing on hold</div>';
+
+  const lowStock = inventory.filter(inv => inv.reorderLevel !== undefined && inv.reorderLevel !== null && inv.reorderLevel !== '' && Number(inv.qty) <= Number(inv.reorderLevel));
+  const dashLowStockBox = document.getElementById('dashLowStock');
+  if(dashLowStockBox){
+    dashLowStockBox.innerHTML = lowStock.length ? lowStock.map(inv=>`
+      <div class="dash-list-row"><span class="name">${escapeHtml(inv.name)}</span><span style="color:var(--red);">${inv.qty} left</span></div>
+    `).join('') : '<div class="dash-empty">Stock levels look fine</div>';
+  }
+
+  ['dashRecent','dashRush','dashHold'].forEach(boxId=>{
+    document.querySelectorAll('#'+boxId+' [data-id]').forEach(row=>{
+      row.addEventListener('click', ()=> dashOpenJob(row.dataset.id));
+    });
+  });
+}
+
+function renderReports(){
+  const from = document.getElementById('rep-from').value;
+  const to = document.getElementById('rep-to').value;
+  let scoped = jobs;
+  if(from) scoped = scoped.filter(j => j.dateIn && j.dateIn >= from);
+  if(to) scoped = scoped.filter(j => j.dateIn && j.dateIn <= to);
+
+  const invoicedJobs = scoped.filter(j=>j.status==='invoiced');
+  const totalRevenue = invoicedJobs.reduce((s,j)=>s+computeTotal(j),0);
+  const openJobs = scoped.filter(j=>j.status!=='invoiced');
+  const openValue = openJobs.reduce((s,j)=>s+computeTotal(j),0);
+
+  document.getElementById('repCards').innerHTML = `
+    <div class="card"><div class="val">${scoped.length}</div><div class="lbl">Total Work Orders</div></div>
+    <div class="card"><div class="val">${openJobs.length}</div><div class="lbl">Open Work Orders</div></div>
+    <div class="card"><div class="val">${invoicedJobs.length}</div><div class="lbl">Invoiced</div></div>
+    <div class="card"><div class="val">$${totalRevenue.toFixed(0)}</div><div class="lbl">Invoiced Revenue</div></div>
+    <div class="card"><div class="val">$${openValue.toFixed(0)}</div><div class="lbl">Open Job Value</div></div>
+  `;
+
+  const byMonth = {};
+  invoicedJobs.forEach(j=>{
+    const d = new Date(j.invoicedAt || j.createdAt);
+    const key = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    byMonth[key] = (byMonth[key]||0) + computeTotal(j);
+  });
+  const months = Object.keys(byMonth).sort().reverse();
+  document.getElementById('repRevenueTable').innerHTML = months.length ?
+    '<tr><th>Month</th><th>Revenue</th></tr>' + months.map(m=>`<tr><td>${m}</td><td>$${byMonth[m].toFixed(2)}</td></tr>`).join('')
+    : '<tr><td style="color:var(--steel-light);">No invoiced work orders yet</td></tr>';
+
+  const byMech = {};
+  scoped.forEach(j=>{
+    const m = j.mechanic || 'Unassigned';
+    if(!byMech[m]) byMech[m] = {count:0, revenue:0};
+    byMech[m].count++;
+    if(j.status==='invoiced') byMech[m].revenue += computeTotal(j);
+  });
+  const mechRows = Object.keys(byMech).sort((a,b)=>byMech[b].count-byMech[a].count);
+  document.getElementById('repMechTable').innerHTML = mechRows.length ?
+    '<tr><th>Mechanic</th><th>Work Orders</th><th>Invoiced Revenue</th></tr>' + mechRows.map(m=>`<tr><td>${escapeHtml(m)}</td><td>${byMech[m].count}</td><td>$${byMech[m].revenue.toFixed(2)}</td></tr>`).join('')
+    : '<tr><td style="color:var(--steel-light);">No data yet</td></tr>';
+
+  const bySystem = {};
+  scoped.forEach(j=>(j.codeLines||[]).forEach(cl=>{ bySystem[cl.system] = (bySystem[cl.system]||0)+1; }));
+  const sysRows = Object.keys(bySystem).sort((a,b)=>bySystem[b]-bySystem[a]);
+  document.getElementById('repSystemTable').innerHTML = sysRows.length ?
+    '<tr><th>System</th><th>Times Serviced</th></tr>' + sysRows.map(s=>`<tr><td>${escapeHtml(s)}</td><td>${bySystem[s]}</td></tr>`).join('')
+    : '<tr><td style="color:var(--steel-light);">No system codes logged yet</td></tr>';
+
+  lastReorderItems = inventory.filter(inv => inv.reorderLevel !== undefined && inv.reorderLevel !== null && inv.reorderLevel !== '' && Number(inv.qty) <= Number(inv.reorderLevel));
+  document.getElementById('repReorderTable').innerHTML = lastReorderItems.length ?
+    '<tr><th>Part</th><th>Part#</th><th>Qty on Hand</th><th>Reorder Level</th><th>Suggested Order Qty</th></tr>' +
+    lastReorderItems.map(inv=>{
+      const target = Math.max(Number(inv.reorderLevel)*2, Number(inv.reorderLevel)+1);
+      const suggested = Math.max(1, Math.round(target - Number(inv.qty)));
+      return `<tr><td>${escapeHtml(inv.name)}</td><td>${inv.partNumber?escapeHtml(inv.partNumber):'—'}</td><td>${inv.qty}</td><td>${inv.reorderLevel}</td><td>${suggested}</td></tr>`;
+    }).join('')
+    : '<tr><td style="color:var(--steel-light);">Stock levels look fine — nothing at or below reorder level</td></tr>';
+
+  const scopedSales = sales.filter(s=>{
+    if(!s.soldAt) return true;
+    const d = new Date(s.soldAt).toISOString().slice(0,10);
+    if(from && d < from) return false;
+    if(to && d > to) return false;
+    return true;
+  }).sort((a,b)=>(b.soldAt||0)-(a.soldAt||0));
+  const salesTotal = scopedSales.reduce((s,x)=>s+(Number(x.total)||0),0);
+  document.getElementById('repSalesTable').innerHTML = scopedSales.length ?
+    '<tr><th>Date</th><th>Part</th><th>Qty</th><th>Total</th><th>Customer</th></tr>' +
+    scopedSales.map(s=>`<tr><td>${s.soldAt?new Date(s.soldAt).toLocaleDateString():'—'}</td><td>${escapeHtml(s.partName||'')}</td><td>${s.qty}</td><td>$${(Number(s.total)||0).toFixed(2)}</td><td>${escapeHtml(s.customer||'Walk-in')}</td></tr>`).join('') +
+    `<tr><td colspan="3" style="font-weight:700;">Total</td><td style="font-weight:700;">$${salesTotal.toFixed(2)}</td><td></td></tr>`
+    : '<tr><td style="color:var(--steel-light);">No counter sales logged yet</td></tr>';
+}
+let lastReorderItems = [];
+document.getElementById('printReorderBtn').addEventListener('click', ()=>{
+  if(!lastReorderItems.length){ alert('Nothing is currently below its reorder level.'); return; }
+  setDynamicPrintStyle(`
+    @page { size: letter; margin: 0.6in; }
+    #printArea{ font-family: Arial, sans-serif; color:#111; }
+    #printArea h1{ font-size:18px; margin:0 0 4px; }
+    #printArea .meta{ font-size:11px; color:#555; margin-bottom:16px; }
+    #printArea table{ width:100%; border-collapse:collapse; }
+    #printArea th, #printArea td{ border:1px solid #999; padding:6px 8px; font-size:12px; text-align:left; }
+    #printArea th{ background:#eee; }
+  `);
+  const rows = lastReorderItems.map(inv=>{
+    const target = Math.max(Number(inv.reorderLevel)*2, Number(inv.reorderLevel)+1);
+    const suggested = Math.max(1, Math.round(target - Number(inv.qty)));
+    return `<tr><td>${escapeHtml(inv.name)}</td><td>${inv.partNumber?escapeHtml(inv.partNumber):'—'}</td><td>${inv.qty}</td><td>${inv.reorderLevel}</td><td>${suggested}</td></tr>`;
+  }).join('');
+  document.getElementById('printArea').innerHTML = `
+    <h1>${escapeHtml(settings.shopName||'Shop')} — Reorder List</h1>
+    <div class="meta">Printed ${new Date().toLocaleString()}</div>
+    <table>
+      <tr><th>Part</th><th>Part#</th><th>Qty on Hand</th><th>Reorder Level</th><th>Suggested Order Qty</th></tr>
+      ${rows}
+    </table>
+  `;
+  setTimeout(()=>{ window.print(); }, 60);
+});
+document.getElementById('repApplyBtn').addEventListener('click', renderReports);
+document.getElementById('repClearBtn').addEventListener('click', ()=>{
+  document.getElementById('rep-from').value=''; document.getElementById('rep-to').value=''; renderReports();
+});
+
+function renderAdmin(){
+  document.getElementById('ad-shopname').value = settings.shopName || '';
+  document.getElementById('ad-shopphone').value = settings.shopPhone || '';
+  document.getElementById('ad-shopaddress').value = settings.shopAddress || '';
+  document.getElementById('ad-managername').value = settings.managerName || '';
+  document.getElementById('ad-managerphone').value = settings.managerPhone || '';
+  document.getElementById('ad-manageremail').value = settings.managerEmail || '';
+  const list = document.getElementById('mechList');
+  const mechs = settings.mechanics || [];
+  list.innerHTML = mechs.length ? mechs.map((m,i)=>`
+    <div class="mech-row"><span>${escapeHtml(m)}</span><button class="btn small danger" data-i="${i}" id="rm-${i}">Remove</button></div>
+  `).join('') : '<div style="font-size:12px;color:var(--steel-light);">No mechanics added yet</div>';
+  mechs.forEach((m,i)=>{
+    const btn = document.getElementById('rm-'+i);
+    if(btn) btn.addEventListener('click', ()=>{ settings.mechanics.splice(i,1); saveSettings(); renderAdmin(); });
+  });
+  renderInventoryList();
+}
+document.getElementById('saveShopInfoBtn').addEventListener('click', ()=>{
+  settings.shopName = document.getElementById('ad-shopname').value.trim();
+  settings.shopPhone = document.getElementById('ad-shopphone').value.trim();
+  settings.shopAddress = document.getElementById('ad-shopaddress').value.trim();
+  settings.managerName = document.getElementById('ad-managername').value.trim();
+  settings.managerPhone = document.getElementById('ad-managerphone').value.trim();
+  settings.managerEmail = document.getElementById('ad-manageremail').value.trim();
+  saveSettings();
+});
+document.getElementById('addMechBtn').addEventListener('click', ()=>{
+  const inp = document.getElementById('newMechName');
+  const name = inp.value.trim();
+  if(!name) return;
+  if(!settings.mechanics) settings.mechanics = [];
+  settings.mechanics.push(name);
+  inp.value = '';
+  saveSettings(); renderAdmin();
+});
+document.getElementById('addClockNameBtn').addEventListener('click', ()=>{
+  const inp = document.getElementById('newClockName');
+  const name = inp.value.trim();
+  if(!name) return;
+  if(!settings.mechanics) settings.mechanics = [];
+  if(settings.mechanics.includes(name)){ alert(name + ' is already on the roster.'); return; }
+  settings.mechanics.push(name);
+  inp.value = '';
+  saveSettings();
+});
+
+/* ---------------- INVENTORY ---------------- */
+function renderInventoryList(){
+  const box = document.getElementById('inventoryList');
+  if(!box) return;
+  if(!inventory.length){
+    box.innerHTML = '<div style="font-size:12px;color:var(--steel-light);">No parts in inventory yet</div>';
+    return;
+  }
+  box.innerHTML = inventory.map(inv => {
+    const low = inv.reorderLevel !== undefined && inv.reorderLevel !== null && inv.reorderLevel !== '' && Number(inv.qty) <= Number(inv.reorderLevel);
+    const lastDelivery = (inv.deliveries && inv.deliveries.length) ? inv.deliveries[inv.deliveries.length-1] : null;
+    const thumb = inv.photoURL
+      ? `<img src="${inv.photoURL}" data-action="viewphoto" data-url="${inv.photoURL}" style="width:36px;height:36px;object-fit:cover;border-radius:3px;border:1px solid var(--line);cursor:pointer;" title="View last shipping label / packing slip photo">`
+      : `<div style="width:36px;height:36px;border-radius:3px;border:1px dashed var(--line);"></div>`;
+    return `
+    <div class="parts-row" style="grid-template-columns:40px 1.3fr 80px 80px 92px 28px; align-items:center; margin-bottom:6px;">
+      <div>${thumb}</div>
+      <div>
+        <div style="font-size:13px; color:var(--ink); font-weight:600;">${escapeHtml(inv.name)} ${low ? '<span style="color:var(--red); font-size:10px; text-transform:uppercase; letter-spacing:1px;">Low Stock</span>' : ''}</div>
+        <div style="font-size:10px; color:var(--steel-light);">${inv.partNumber ? 'Part# '+escapeHtml(inv.partNumber) : 'No part number'}${lastDelivery ? ' · Last received '+escapeHtml(lastDelivery.date)+(lastDelivery.qty?' (+'+lastDelivery.qty+')':'') : ''}</div>
+      </div>
+      <input type="number" class="inv-qty-input" data-id="${inv.id}" value="${inv.qty}" min="0" step="1" title="Qty on hand">
+      <input type="number" class="inv-price-input" data-id="${inv.id}" value="${inv.price}" min="0" step="0.01" title="Sale price">
+      <div style="display:flex; flex-direction:column; gap:3px;">
+        <button class="btn small ghost" data-action="receivepart" data-id="${inv.id}" type="button" style="font-size:9px; padding:3px 4px;">📷 Receive</button>
+        <button class="btn small ghost" data-action="printlabel" data-id="${inv.id}" type="button" style="font-size:9px; padding:3px 4px;">🏷️ Label</button>
+        <button class="btn small ghost" data-action="sellpart" data-id="${inv.id}" type="button" style="font-size:9px; padding:3px 4px;">🛒 Sell</button>
+      </div>
+      <div class="remove-x" data-id="${inv.id}" data-action="removeinv">✕</div>
+    </div>
+  `;
+  }).join('');
+
+  box.querySelectorAll('.inv-qty-input').forEach(inp => inp.addEventListener('change', async (e)=>{
+    try{ await updateDoc(doc(inventoryCol, e.target.dataset.id), { qty: Number(e.target.value)||0 }); }
+    catch(err){ console.error('qty update failed', err); alert('Could not update stock quantity.'); }
+  }));
+  box.querySelectorAll('.inv-price-input').forEach(inp => inp.addEventListener('change', async (e)=>{
+    try{ await updateDoc(doc(inventoryCol, e.target.dataset.id), { price: Number(e.target.value)||0 }); }
+    catch(err){ console.error('price update failed', err); alert('Could not update price.'); }
+  }));
+  box.querySelectorAll('[data-action="removeinv"]').forEach(x => x.addEventListener('click', async (e)=>{
+    if(!confirm('Remove this part from inventory? This does not affect past work orders.')) return;
+    try{ await deleteDoc(doc(inventoryCol, e.target.dataset.id)); }
+    catch(err){ console.error('inventory delete failed', err); alert('Could not delete.'); }
+  }));
+  box.querySelectorAll('[data-action="receivepart"]').forEach(btn => btn.addEventListener('click', (e)=>{
+    openReceiveModal(e.target.dataset.id);
+  }));
+  box.querySelectorAll('[data-action="printlabel"]').forEach(btn => btn.addEventListener('click', (e)=>{
+    openLabelModal(e.target.dataset.id, 1);
+  }));
+  box.querySelectorAll('[data-action="sellpart"]').forEach(btn => btn.addEventListener('click', (e)=>{
+    openCounterSaleModal(e.target.dataset.id);
+  }));
+  box.querySelectorAll('[data-action="viewphoto"]').forEach(img => img.addEventListener('click', (e)=>{
+    window.open(e.target.dataset.url, '_blank');
+  }));
+}
+
+document.getElementById('receiveShipmentBtn').addEventListener('click', ()=> openReceiveModal(null));
+document.getElementById('counterSaleBtn').addEventListener('click', ()=> openCounterSaleModal(null));
+document.getElementById('addInventoryBtn').addEventListener('click', async ()=>{
+  const name = document.getElementById('inv-name').value.trim();
+  if(!name){ alert('Enter a part name.'); return; }
+  const partNumber = document.getElementById('inv-partnum').value.trim();
+  const qty = Number(document.getElementById('inv-qty').value)||0;
+  const price = Number(document.getElementById('inv-price').value)||0;
+  const reorderRaw = document.getElementById('inv-reorder').value;
+  const reorderLevel = reorderRaw === '' ? null : Number(reorderRaw);
+  try{
+    const newRef = doc(inventoryCol);
+    await setDoc(newRef, { name, partNumber, qty, price, reorderLevel });
+    document.getElementById('inv-name').value = '';
+    document.getElementById('inv-partnum').value = '';
+    document.getElementById('inv-qty').value = '0';
+    document.getElementById('inv-price').value = '0';
+    document.getElementById('inv-reorder').value = '';
+  }catch(err){ console.error('add inventory failed', err); alert('Could not add part to inventory.'); }
+});
+
+document.getElementById('exportDataBtn').addEventListener('click', ()=>{
+  const data = JSON.stringify({ jobs, settings }, null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'shop-tracker-export-'+new Date().toISOString().slice(0,10)+'.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+document.getElementById('clearDataBtn').addEventListener('click', async ()=>{
+  if(confirm('This will permanently delete ALL work orders from Firebase. Are you sure?')){
+    const ids = jobs.map(j=>j.id);
+    for(const id of ids){ await persistDeleteJob(id); }
+    render(); renderReports();
+  }
+});
+
+startListeners();
+</script>
+</body>
+</html>
